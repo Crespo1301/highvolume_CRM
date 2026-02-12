@@ -1,12 +1,12 @@
 import React from 'react';
 import { CRMProvider, useCRM } from './context/CRMContext';
 import { useKeyboard } from './hooks/useKeyboard';
-import { colors, GlobalStyles } from './utils/theme.jsx';
+import { colors, GlobalStyles } from './utils/theme';
 import { Header } from './components/Header';
 import { Navigation } from './components/Navigation';
 import { Footer } from './components/Footer';
 import { AllModals } from './components/Modals';
-import { Dashboard, Analytics, ListView, GolfCoursesView, AddLeadForm, SalesView } from './components/Views';
+import { Dashboard, Analytics, ListView, GolfCoursesView, AddLeadForm, AddEmailForm } from './components/Views';
 
 function CRMApp() {
   const { view, notification, searchQuery } = useCRM();
@@ -65,15 +65,14 @@ function CRMApp() {
           {view === 'analytics' && <Analytics />}
           {view === 'leads' && <ListView type="leads" />}
           {view === 'followups' && <ListView type="followups" />}
-          {view === 'converted' && <ListView type="converted" />}
           {view === 'dnc' && <ListView type="dnc" />}
           {view === 'dead' && <ListView type="dead" />}
           {view === 'calllog' && <ListView type="calllog" />}
-          {view === 'sales' && <SalesView />}
           {view === 'trash' && <ListView type="trash" />}
           {view === 'emails' && <ListView type="emails" />}
           {view === 'golfcourses' && <GolfCoursesView />}
           {view === 'addLead' && <AddLeadForm />}
+          {view === 'addEmail' && <AddEmailForm />}
         </main>
 
         <Footer />

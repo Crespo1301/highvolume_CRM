@@ -374,7 +374,10 @@ export function EditLeadModal() {
   return (
     <Modal onClose={() => closeModal('editLead')}>
       <ModalBox maxWidth={700}>
-        <h2 style={{ color: colors.text, marginBottom: 20, fontSize: 18 }}>✏️ Edit Lead</h2>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+          <h2 style={{ color: colors.text, fontSize: 18 }}>✏️ Edit Lead</h2>
+          <button onClick={() => closeModal('editLead')} style={{ ...buttonBase, background: colors.bgCard, color: colors.textMuted }}>✕</button>
+        </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
           {[['businessName', 'Business Name', 2], ['contactName', 'Contact', 1], ['phone', 'Phone', 1], ['email', 'Email', 1], ['website', 'Website', 1], ['address', 'Address', 2]].map(([key, label, span]) => (
             <div key={key} style={{ gridColumn: `span ${span}` }}>
@@ -434,7 +437,10 @@ export function EditCallModal() {
   return (
     <Modal onClose={() => closeModal('editCall')}>
       <ModalBox maxWidth={500}>
-        <h2 style={{ color: colors.text, marginBottom: 20, fontSize: 18 }}>✏️ Edit Call</h2>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+          <h2 style={{ color: colors.text, fontSize: 18 }}>✏️ Edit Call</h2>
+          <button onClick={() => closeModal('editCall')} style={{ ...buttonBase, background: colors.bgCard, color: colors.textMuted }}>✕</button>
+        </div>
         <div style={{ display: 'grid', gap: 14 }}>
           <div><label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>Lead Name</label><input value={form.leadName || ''} onChange={e => setForm(f => ({ ...f, leadName: e.target.value }))} style={inputBase} /></div>
           <div><label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>Phone</label><input value={form.phone || ''} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} style={inputBase} /></div>

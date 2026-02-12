@@ -13,7 +13,8 @@ export const STORAGE_KEYS = {
   settings: 'crm_settings',
   golfCourses: 'crm_golf_courses',
   sales: 'crm_sales',
-  converted: 'crm_converted'
+  converted: 'crm_converted',
+  filters: 'crm_filters'
 };
 
 export const loadData = (key, defaultValue) => {

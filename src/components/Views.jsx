@@ -177,20 +177,154 @@ export function Analytics() {
 // Sort Header
 const SortHeader = ({ type }) => {
   const { sortBy, setSortBy } = useCRM();
-  if (!['leads', 'dnc', 'dead'].includes(type)) return null;
-  
+
+  const OPTIONS = {
+    // Leads-like
+    leads: SORT_OPTIONS,
+    followups: SORT_OPTIONS,
+    dnc: SORT_OPTIONS,
+    dead: SORT_OPTIONS,
+    converted: [
+      { key: 'newest', label: 'Newest First' },
+      { key: 'oldest', label: 'Oldest First' },
+      { key: 'alpha', label: 'A → Z' },
+      { key: 'alpha-desc', label: 'Z → A' },
+    ],
+    calllog: [
+      { key: 'newest', label: 'Newest First' },
+      { key: 'oldest', label: 'Oldest First' },
+      { key: 'alpha', label: 'A → Z' },
+      { key: 'alpha-desc', label: 'Z → A' },
+    ],
+    sales: [
+      { key: 'newest', label: 'Newest First' },
+      { key: 'oldest', label: 'Oldest First' },
+      { key: 'alpha', label: 'A → Z' },
+      { key: 'alpha-desc', label: 'Z → A' },
+      { key: 'calls', label: 'Highest Amount' },
+    ],
+    trash: [
+      { key: 'newest', label: 'Newest First' },
+      { key: 'oldest', label: 'Oldest First' },
+    ],
+    emails: null,
+    golfcourses: null,
+  };
+
+  const opts = OPTIONS[type];
+  if (!opts) return null;
+
+  const hasCurrent = opts.some(o => o.key === sortBy);
+  const value = hasCurrent ? sortBy : opts[0].key;
+
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
       <span style={{ color: colors.textDim, fontSize: 11 }}>Sort:</span>
       <select 
-        value={sortBy} 
+        value={value} 
         onChange={e => setSortBy(e.target.value)}
         style={{ ...inputBase, width: 'auto', padding: '4px 8px', fontSize: 11, background: colors.bg }}
       >
-        {SORT_OPTIONS.map(opt => (
+        {opts.map(opt => (
           <option key={opt.key} value={opt.key}>{opt.label}</option>
         ))}
       </select>
+    </div>
+  );
+};
+
+// Filter Header
+const FilterHeader = ({ type }) => {
+  const { filters, updateFilters, clearFilters, golfCourses } = useCRM();
+
+  // Only show on list views (not dashboard/analytics/addLead/golfcourses)
+  if (['golfcourses', 'emails'].includes(type)) return null;
+
+  const hasAny = Object.values(filters || {}).some(v => v && v !== 'all');
+
+  const showLeadFilters = ['leads', 'followups', 'dnc', 'dead', 'converted', 'trash'].includes(type);
+
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
+      {/* Golf course filter */}
+      <select
+        value={filters.golfCourseId || 'all'}
+        onChange={e => updateFilters({ golfCourseId: e.target.value })}
+        style={{ ...inputBase, width: 'auto', padding: '4px 8px', fontSize: 11, background: colors.bg }}
+        title="Filter by golf course"
+      >
+        <option value="all">All Courses</option>
+        <option value="unassigned">Unassigned</option>
+        {golfCourses.map(gc => <option key={gc.id} value={gc.id}>{gc.name}</option>)}
+      </select>
+
+      {showLeadFilters && (
+        <>
+          <select
+            value={filters.industry || 'all'}
+            onChange={e => updateFilters({ industry: e.target.value })}
+            style={{ ...inputBase, width: 'auto', padding: '4px 8px', fontSize: 11, background: colors.bg }}
+            title="Filter by industry"
+          >
+            <option value="all">All Industries</option>
+            {INDUSTRIES.map(ind => <option key={ind} value={ind}>{ind}</option>)}
+          </select>
+
+          <select
+            value={filters.priority || 'all'}
+            onChange={e => updateFilters({ priority: e.target.value })}
+            style={{ ...inputBase, width: 'auto', padding: '4px 8px', fontSize: 11, background: colors.bg }}
+            title="Filter by priority"
+          >
+            <option value="all">All Priorities</option>
+            <option value="hot">🔥 Hot</option>
+            <option value="normal">Normal</option>
+            <option value="low">Low</option>
+          </select>
+
+          <select
+            value={filters.source || 'all'}
+            onChange={e => updateFilters({ source: e.target.value })}
+            style={{ ...inputBase, width: 'auto', padding: '4px 8px', fontSize: 11, background: colors.bg }}
+            title="Filter by source"
+          >
+            <option value="all">All Sources</option>
+            {SOURCES.map(src => <option key={src} value={src}>{src}</option>)}
+          </select>
+        </>
+      )}
+
+      {type === 'calllog' && (
+        <select
+          value={filters.outcome || 'all'}
+          onChange={e => updateFilters({ outcome: e.target.value })}
+          style={{ ...inputBase, width: 'auto', padding: '4px 8px', fontSize: 11, background: colors.bg }}
+          title="Filter by call outcome"
+        >
+          <option value="all">All Outcomes</option>
+          {['completed', 'voicemail', 'no-answer', 'callback', 'interested', 'not-interested'].map(o => (
+            <option key={o} value={o}>{o}</option>
+          ))}
+        </select>
+      )}
+
+      {type === 'sales' && (
+        <select
+          value={filters.saleType || 'all'}
+          onChange={e => updateFilters({ saleType: e.target.value })}
+          style={{ ...inputBase, width: 'auto', padding: '4px 8px', fontSize: 11, background: colors.bg }}
+          title="Filter by sale type"
+        >
+          <option value="all">All Sale Types</option>
+          {SALE_TYPES.map(t => <option key={t.key} value={t.key}>{t.label}</option>)}
+        </select>
+      )}
+
+      {hasAny && (
+        <button onClick={clearFilters} style={{ ...buttonBase, padding: '6px 10px', background: colors.bgCard, color: colors.textMuted, fontSize: 11 }}>
+          Clear Filters
+        </button>
+      )}
     </div>
   );
 };
@@ -228,6 +362,7 @@ export function ListView({ type }) {
         <h2 style={{ fontSize: 15, color: colors.text, fontWeight: '600' }}>{titles[type]}</h2>
         <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
           <SortHeader type={type} />
+          <FilterHeader type={type} />
           {hints[type] && <span style={{ color: colors.textDim, fontSize: 11 }}>{hints[type]}</span>}
           <span style={{ color: colors.textDim, fontSize: 12 }}>{list.length} entries</span>
           {type === 'trash' && trash.length > 0 && (

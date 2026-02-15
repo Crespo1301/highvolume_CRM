@@ -5,7 +5,7 @@ export function useKeyboard() {
   const {
     view, setView, selectedIndex, setSelectedIndex, setSearchQuery,
     modals, openModal, closeAllModals,
-    getCurrentList, tallyCall, moveToDNC, moveToDead, restoreFromDNC, restoreFromDead,
+    getCurrentList, tallyCall, session, startSession, stopSession, sessionNext, moveToDNC, moveToDead, restoreFromDNC, restoreFromDead,
     restoreFromTrash, unconvertLead, deleteToTrash, deleteCall, quickLogEmail, setEmails, notify
   } = useCRM();
 
@@ -38,6 +38,19 @@ export function useKeyboard() {
       if (nav[key]) { e.preventDefault(); setView(nav[key]); setSelectedIndex(0); return; }
 
       switch (key) {
+
+        case 'n':
+          e.preventDefault();
+          if (session?.active && ['leads', 'followups'].includes(view)) { sessionNext(); }
+          else if (['leads', 'followups'].includes(view) && list[selectedIndex]) { 
+            setSelectedIndex(i => Math.min(i + 1, list.length - 1)); 
+          }
+          break;
+        case 's':
+          e.preventDefault();
+          if (!['leads', 'followups'].includes(view)) { notify('Session mode is available in Leads and Follow-ups'); break; }
+          if (session?.active) stopSession(); else startSession(view);
+          break;
         case ' ': case '0': 
           e.preventDefault(); 
           tallyCall(['leads', 'followups'].includes(view) && list[selectedIndex] ? list[selectedIndex] : null); 

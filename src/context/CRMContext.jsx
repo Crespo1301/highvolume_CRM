@@ -21,10 +21,14 @@ export function CRMProvider({ children }) {
   const [view, setView] = useState('dashboard');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [notification, setNotification] = useState('');
+
+  const notify = useCallback((msg) => { setNotification(msg); setTimeout(() => setNotification(''), 2500); }, []);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [analyticsRange, setAnalyticsRange] = useState('week');
   const [sortBy, setSortBy] = useState('newest');
   const [filters, setFilters] = useState(() => loadData(STORAGE_KEYS.filters, { golfCourseId: 'all', industry: 'all', priority: 'all', source: 'all', outcome: 'all', saleType: 'all' }));
+  const [session, setSession] = useState(() => loadData(STORAGE_KEYS.session, { active: false, view: 'leads', leadId: null }));
 
   // Modal state
   const [modals, setModals] = useState({
@@ -32,6 +36,47 @@ export function CRMProvider({ children }) {
     leadDetail: null, editLead: null, editCall: null, editGolfCourse: null, recordSale: null
   });
 
+  // Users / reps
+  const [users, setUsers] = useState(() => loadData('crm_users', [{ id: 'u_default', name: 'Default Rep', role: 'Rep', active: true }]));
+  const [currentUserId, setCurrentUserId] = useState(() => loadData('crm_current_user_id', 'u_default'));
+
+  const currentUser = useMemo(() => users.find(u => u.id === currentUserId) || users[0] || null, [users, currentUserId]);
+
+  // User management
+  const addUser = useCallback((data) => {
+    const name = (data?.name || '').trim();
+    if (!name) { notify('User name required'); return false; }
+    const u = { id: generateId(), name, role: (data?.role || 'Rep').trim(), active: data?.active !== false, createdAt: new Date().toISOString() };
+    setUsers(prev => [u, ...prev]);
+    if (!currentUserId) setCurrentUserId(u.id);
+    notify('User added');
+    return true;
+  }, [notify, currentUserId]);
+
+  const updateUser = useCallback((user) => {
+    setUsers(prev => prev.map(u => u.id === user.id ? user : u));
+    notify('User updated');
+  }, [notify]);
+
+  const deleteUser = useCallback((user) => {
+    if (users.length <= 1) { notify('You need at least one user'); return; }
+    if (confirm('Delete this user?')) {
+      setUsers(prev => prev.filter(u => u.id !== user.id));
+      if (currentUserId === user.id) {
+        const next = users.find(u => u.id !== user.id);
+        setCurrentUserId(next?.id || null);
+      }
+      notify('User deleted');
+    }
+  }, [users, currentUserId, notify]);
+
+  const setCurrentUser = useCallback((userId) => {
+    setCurrentUserId(userId);
+    notify('Active user changed');
+  }, [notify]);
+
+
+  
   const openModal = (key, value = true) => setModals(m => ({ ...m, [key]: value }));
   const closeModal = (key) => setModals(m => ({ ...m, [key]: key.includes('edit') || key.includes('Detail') || key === 'recordSale' ? null : false }));
   const closeAllModals = () => setModals({ help: false, import: false, export: false, settings: false, privacy: false, terms: false, leadDetail: null, editLead: null, editCall: null, editGolfCourse: null, recordSale: null });
@@ -42,6 +87,9 @@ export function CRMProvider({ children }) {
   useEffect(() => { saveData(STORAGE_KEYS.dead, deadLeads); }, [deadLeads]);
   useEffect(() => { saveData(STORAGE_KEYS.converted, convertedLeads); }, [convertedLeads]);
   useEffect(() => { saveData(STORAGE_KEYS.trash, trash); }, [trash]);
+  useEffect(() => saveData('crm_users', users), [users]);
+  useEffect(() => saveData('crm_current_user_id', currentUserId), [currentUserId]);
+
   useEffect(() => { saveData(STORAGE_KEYS.emails, emails); }, [emails]);
   useEffect(() => { saveData(STORAGE_KEYS.callLog, callLog); }, [callLog]);
   useEffect(() => { saveData(STORAGE_KEYS.stats, dailyStats); }, [dailyStats]);
@@ -86,8 +134,6 @@ export function CRMProvider({ children }) {
   }, [sales]);
 
   // Notification
-  const notify = useCallback((msg) => { setNotification(msg); setTimeout(() => setNotification(''), 2500); }, []);
-
   // Filters
   const updateFilters = useCallback((patch) => setFilters(prev => ({ ...prev, ...patch })), []);
   const clearFilters = useCallback(() => setFilters({ golfCourseId: 'all', industry: 'all', priority: 'all', source: 'all', outcome: 'all', saleType: 'all' }), []);
@@ -102,137 +148,11 @@ export function CRMProvider({ children }) {
     if (lead) {
       setLeads(prev => prev.map(l => l.id === lead.id ? { ...l, lastCalled: now, callCount: (l.callCount || 0) + 1, callHistory: [...(l.callHistory || []), { id: generateId(), timestamp: now, outcome, notes }] } : l));
     }
-    notify(`📞 Call tallied! Today: ${(dailyStats[today] || 0) + 1}`);
+    notify(`Call tallied! Today: ${(dailyStats[today] || 0) + 1}`);
   }, [dailyStats, notify, settings.activeGolfCourse]);
 
-  // Quick email log (just mark that we emailed them)
-  const quickLogEmail = useCallback((lead) => {
-    const now = new Date().toISOString();
-    setEmails(prev => [{ 
-      id: generateId(), 
-      leadId: lead.id, 
-      leadName: lead.businessName,
-      to: lead.email || '',
-      sentAt: now
-    }, ...prev]);
-    setLeads(prev => prev.map(l => l.id === lead.id ? { ...l, lastEmailed: now, emailCount: (l.emailCount || 0) + 1 } : l));
-    notify(`📧 Email logged for ${lead.businessName}`);
-  }, [notify]);
 
-  // Lead actions
-  const addLead = useCallback((data) => {
-    if (!data.businessName && !data.phone) { notify('❌ Name or phone required'); return false; }
-    setLeads(prev => [{ id: generateId(), ...data, createdAt: new Date().toISOString(), callCount: 0, callHistory: [], golfCourseId: data.golfCourseId || settings.activeGolfCourse }, ...prev]);
-    notify(`✅ ${data.businessName || 'Lead'} added!`);
-    return true;
-  }, [notify, settings.activeGolfCourse]);
-
-  const updateLead = useCallback((lead) => { setLeads(prev => prev.map(l => l.id === lead.id ? lead : l)); openModal('leadDetail', lead); closeModal('editLead'); notify('✅ Lead updated'); }, [notify]);
-  const moveToDNC = useCallback((lead) => { setLeads(prev => prev.filter(l => l.id !== lead.id)); setDncList(prev => [...prev, { ...lead, dncDate: new Date().toISOString() }]); notify(`🚫 ${lead.businessName} → DNC`); }, [notify]);
-  const moveToDead = useCallback((lead) => { setLeads(prev => prev.filter(l => l.id !== lead.id)); setDeadLeads(prev => [...prev, { ...lead, deadDate: new Date().toISOString() }]); notify(`💀 ${lead.businessName} → Dead`); }, [notify]);
-  const restoreFromDNC = useCallback((lead) => { setDncList(prev => prev.filter(l => l.id !== lead.id)); setLeads(prev => [...prev, { ...lead, restoredAt: new Date().toISOString() }]); notify(`✅ ${lead.businessName} restored`); }, [notify]);
-  const restoreFromDead = useCallback((lead) => { setDeadLeads(prev => prev.filter(l => l.id !== lead.id)); setLeads(prev => [...prev, { ...lead, restoredAt: new Date().toISOString() }]); notify(`✅ ${lead.businessName} restored`); }, [notify]);
-  
-  // Convert lead (sale made!)
-  const convertLead = useCallback((lead, saleData = null) => {
-    setLeads(prev => prev.filter(l => l.id !== lead.id));
-    const convertedLead = { 
-      ...lead, 
-      convertedAt: new Date().toISOString(),
-      status: 'converted'
-    };
-    setConvertedLeads(prev => [convertedLead, ...prev]);
-    
-    // If sale data provided, record the sale
-    if (saleData) {
-      const sale = {
-        id: generateId(),
-        leadId: lead.id,
-        leadName: lead.businessName,
-        saleDate: new Date().toISOString(),
-        saleType: saleData.type,
-        amount: saleData.amount,
-        saleCount: saleData.saleCount || 1,
-        notes: saleData.notes || '',
-        golfCourseId: lead.golfCourseId
-      };
-      setSales(prev => [sale, ...prev]);
-      notify(`🎉 SALE! ${lead.businessName} - $${saleData.amount}!`);
-    } else {
-      notify(`🎉 ${lead.businessName} converted!`);
-    }
-  }, [notify]);
-
-  // Unconvert lead (sale fell through)
-  const unconvertLead = useCallback((lead) => {
-    setConvertedLeads(prev => prev.filter(l => l.id !== lead.id));
-    setLeads(prev => [...prev, { ...lead, status: 'active', unconvertedAt: new Date().toISOString() }]);
-    // Remove associated sale if exists
-    setSales(prev => prev.filter(s => s.leadId !== lead.id));
-    notify(`↩️ ${lead.businessName} moved back to leads`);
-  }, [notify]);
-
-  const deleteToTrash = useCallback((item, type) => {
-    if (type === 'lead') setLeads(prev => prev.filter(l => l.id !== item.id));
-    else if (type === 'dnc') setDncList(prev => prev.filter(l => l.id !== item.id));
-    else if (type === 'dead') setDeadLeads(prev => prev.filter(l => l.id !== item.id));
-    else if (type === 'converted') setConvertedLeads(prev => prev.filter(l => l.id !== item.id));
-    setTrash(prev => [...prev, { ...item, type, deletedAt: new Date().toISOString() }]);
-    closeModal('leadDetail');
-    notify('🗑️ Moved to trash');
-  }, [notify]);
-
-  const restoreFromTrash = useCallback((item) => {
-    if (item.type === 'call') { setCallLog(prev => [item, ...prev]); setDailyStats(prev => ({ ...prev, [new Date(item.timestamp).toDateString()]: (prev[new Date(item.timestamp).toDateString()] || 0) + 1 })); }
-    else if (item.type === 'lead') setLeads(prev => [...prev, item]);
-    else if (item.type === 'dnc') setDncList(prev => [...prev, item]);
-    else if (item.type === 'dead') setDeadLeads(prev => [...prev, item]);
-    else if (item.type === 'converted') setConvertedLeads(prev => [...prev, item]);
-    setTrash(prev => prev.filter(t => !(t.id === item.id && t.type === item.type)));
-    notify('✅ Restored from trash');
-  }, [notify]);
-
-  const emptyTrash = useCallback(() => { if (trash.length && confirm(`Delete ${trash.length} items permanently?`)) { setTrash([]); notify('🗑️ Trash emptied'); } }, [trash, notify]);
-
-  // Call actions
-  const deleteCall = useCallback((callId) => {
-    const call = callLog.find(c => c.id === callId);
-    if (!call) return;
-    setTrash(prev => [...prev, { ...call, type: 'call', deletedAt: new Date().toISOString() }]);
-    setCallLog(prev => prev.filter(c => c.id !== callId));
-    setDailyStats(prev => ({ ...prev, [new Date(call.timestamp).toDateString()]: Math.max(0, (prev[new Date(call.timestamp).toDateString()] || 1) - 1) }));
-    if (call.leadId) setLeads(prev => prev.map(l => l.id === call.leadId ? { ...l, callCount: Math.max(0, (l.callCount || 1) - 1), callHistory: (l.callHistory || []).filter(h => h.id !== callId) } : l));
-    notify('🗑️ Call deleted');
-  }, [callLog, notify]);
-
-  const updateCall = useCallback((call) => { setCallLog(prev => prev.map(c => c.id === call.id ? call : c)); closeModal('editCall'); notify('✅ Call updated'); }, [notify]);
-
-  // Golf course actions
-  const addGolfCourse = useCallback((data) => { if (!data.name) { notify('❌ Name required'); return false; } setGolfCourses(prev => [...prev, { id: generateId(), ...data, createdAt: new Date().toISOString() }]); notify('⛳ Course added'); return true; }, [notify]);
-  const updateGolfCourse = useCallback((course) => { setGolfCourses(prev => prev.map(gc => gc.id === course.id ? course : gc)); closeModal('editGolfCourse'); notify('✅ Course updated'); }, [notify]);
-  const deleteGolfCourse = useCallback((id) => { if (confirm('Delete course?')) { setGolfCourses(prev => prev.filter(gc => gc.id !== id)); if (settings.activeGolfCourse === id) setSettings(prev => ({ ...prev, activeGolfCourse: null })); notify('🗑️ Course deleted'); } }, [settings.activeGolfCourse, notify]);
-
-  // Record a sale
-  const recordSale = useCallback((saleData) => {
-    const sale = {
-      id: generateId(),
-      leadId: saleData.leadId || null,
-      leadName: saleData.leadName || 'Walk-in',
-      saleDate: new Date().toISOString(),
-      saleType: saleData.type,
-      amount: saleData.amount,
-      saleCount: saleData.saleCount || 1,
-      notes: saleData.notes || '',
-      golfCourseId: settings.activeGolfCourse
-    };
-    setSales(prev => [sale, ...prev]);
-    notify(`🎉 SALE recorded! $${saleData.amount}`);
-    closeModal('recordSale');
-    return true;
-  }, [notify, settings.activeGolfCourse]);
-
-  // Get current list with sorting
-  const getCurrentList = useCallback(() => {
+  const getListForView = useCallback((viewName) => {
     const q = (searchQuery || '').toLowerCase();
 
     const matchesSearch = (item) => {
@@ -284,6 +204,7 @@ export function CRMProvider({ children }) {
 
     const callSorter = (a, b) => {
       if (sortBy === 'alpha' || sortBy === 'alpha-desc') {
+
         return (sortBy === 'alpha')
           ? (a.leadName || '').localeCompare(b.leadName || '')
           : (b.leadName || '').localeCompare(a.leadName || '');
@@ -316,7 +237,7 @@ export function CRMProvider({ children }) {
     const applyLeadPipeline = (arr) => arr.filter(matchesSearch).filter(matchesCommonFilters).sort(leadSorter);
     const applyPlainPipeline = (arr, sorter) => arr.filter(matchesSearch).filter(matchesCommonFilters).sort(sorter);
 
-    switch (view) {
+    switch (viewName) {
       case 'leads': return applyLeadPipeline(leads);
       case 'followups': return applyLeadPipeline(followUps);
       case 'dnc': return applyLeadPipeline(dncList);
@@ -343,8 +264,171 @@ export function CRMProvider({ children }) {
         return golfCourses.filter(gc => !q || (gc.name || '').toLowerCase().includes(q));
       default: return [];
     }
-  }, [view, leads, followUps, dncList, deadLeads, convertedLeads, emails, callLog, trash, golfCourses, sales, searchQuery, sortBy, filters]);
+  }, [leads, followUps, dncList, deadLeads, convertedLeads, emails, callLog, trash, golfCourses, sales, searchQuery, sortBy, filters]);
 
+  const getCurrentList = useCallback(() => getListForView(view), [getListForView, view]);
+
+
+
+  const persistSession = useCallback((next) => saveData(STORAGE_KEYS.session, next), []);
+
+  const startSession = useCallback((targetView = view) => {
+    const list = getListForView(targetView);
+    const current = (targetView === view && list[selectedIndex]) ? list[selectedIndex] : list[0];
+    const next = { active: true, view: targetView, leadId: current?.id || null };
+    setSession(next);
+    persistSession(next);
+    setView(targetView);
+    setSelectedIndex(Math.max(0, list.findIndex(l => l.id === next.leadId)));
+    notify('Session started');
+  }, [getListForView, notify, persistSession, selectedIndex, setSelectedIndex, setView, view]);
+
+  const stopSession = useCallback(() => {
+    const next = { active: false, view: session.view || 'leads', leadId: null };
+    setSession(next);
+    persistSession(next);
+    notify('Session stopped');
+  }, [notify, persistSession, session.view]);
+
+  const sessionNext = useCallback(() => {
+    const list = getListForView(session.view || view);
+    if (!list.length) { notify('No records in this view'); return; }
+    const idx = session.leadId ? list.findIndex(l => l.id === session.leadId) : -1;
+    const nextIdx = Math.min(idx + 1, list.length - 1);
+    const nextLead = list[nextIdx];
+    const next = { ...session, active: true, view: session.view || view, leadId: nextLead?.id || null };
+    setSession(next);
+    persistSession(next);
+    setSelectedIndex(nextIdx);
+  }, [getListForView, notify, persistSession, session, setSelectedIndex, view]);
+
+  // Quick email log (just mark that we emailed them)
+  const quickLogEmail = useCallback((lead) => {
+    const now = new Date().toISOString();
+    setEmails(prev => [{ 
+      id: generateId(), 
+      leadId: lead.id, 
+      leadName: lead.businessName,
+      to: lead.email || '',
+      sentAt: now
+    }, ...prev]);
+    setLeads(prev => prev.map(l => l.id === lead.id ? { ...l, lastEmailed: now, emailCount: (l.emailCount || 0) + 1 } : l));
+    notify(` Email logged for ${lead.businessName}`);
+  }, [notify]);
+
+  // Lead actions
+  const addLead = useCallback((data) => {
+    if (!data.businessName && !data.phone) { notify('Name or phone required'); return false; }
+    setLeads(prev => [{ id: generateId(), ...data, createdAt: new Date().toISOString(), callCount: 0, callHistory: [], golfCourseId: data.golfCourseId || settings.activeGolfCourse }, ...prev]);
+    notify(`${data.businessName || 'Lead'} added`);
+    return true;
+  }, [notify, settings.activeGolfCourse]);
+
+  const updateLead = useCallback((lead) => { setLeads(prev => prev.map(l => l.id === lead.id ? lead : l)); openModal('leadDetail', lead); closeModal('editLead'); notify('Lead updated'); }, [notify]);
+  const moveToDNC = useCallback((lead) => { setLeads(prev => prev.filter(l => l.id !== lead.id)); setDncList(prev => [...prev, { ...lead, dncDate: new Date().toISOString() }]); notify(` ${lead.businessName} → DNC`); }, [notify]);
+  const moveToDead = useCallback((lead) => { setLeads(prev => prev.filter(l => l.id !== lead.id)); setDeadLeads(prev => [...prev, { ...lead, deadDate: new Date().toISOString() }]); notify(` ${lead.businessName} → Dead`); }, [notify]);
+  const restoreFromDNC = useCallback((lead) => { setDncList(prev => prev.filter(l => l.id !== lead.id)); setLeads(prev => [...prev, { ...lead, restoredAt: new Date().toISOString() }]); notify(` ${lead.businessName} restored`); }, [notify]);
+  const restoreFromDead = useCallback((lead) => { setDeadLeads(prev => prev.filter(l => l.id !== lead.id)); setLeads(prev => [...prev, { ...lead, restoredAt: new Date().toISOString() }]); notify(` ${lead.businessName} restored`); }, [notify]);
+  
+  // Convert lead (sale made!)
+  const convertLead = useCallback((lead, saleData = null) => {
+    setLeads(prev => prev.filter(l => l.id !== lead.id));
+    const convertedLead = { 
+      ...lead, 
+      convertedAt: new Date().toISOString(),
+      status: 'converted'
+    };
+    setConvertedLeads(prev => [convertedLead, ...prev]);
+    
+    // If sale data provided, record the sale
+    if (saleData) {
+      const sale = {
+        id: generateId(),
+        leadId: lead.id,
+        leadName: lead.businessName,
+        saleDate: new Date().toISOString(),
+        saleType: saleData.type,
+        amount: saleData.amount,
+        saleCount: saleData.saleCount || 1,
+        notes: saleData.notes || '',
+        golfCourseId: lead.golfCourseId
+      };
+      setSales(prev => [sale, ...prev]);
+      notify(` SALE! ${lead.businessName} - $${saleData.amount}!`);
+    } else {
+      notify(` ${lead.businessName} converted!`);
+    }
+  }, [notify]);
+
+  // Unconvert lead (sale fell through)
+  const unconvertLead = useCallback((lead) => {
+    setConvertedLeads(prev => prev.filter(l => l.id !== lead.id));
+    setLeads(prev => [...prev, { ...lead, status: 'active', unconvertedAt: new Date().toISOString() }]);
+    // Remove associated sale if exists
+    setSales(prev => prev.filter(s => s.leadId !== lead.id));
+    notify(`️ ${lead.businessName} moved back to leads`);
+  }, [notify]);
+
+  const deleteToTrash = useCallback((item, type) => {
+    if (type === 'lead') setLeads(prev => prev.filter(l => l.id !== item.id));
+    else if (type === 'dnc') setDncList(prev => prev.filter(l => l.id !== item.id));
+    else if (type === 'dead') setDeadLeads(prev => prev.filter(l => l.id !== item.id));
+    else if (type === 'converted') setConvertedLeads(prev => prev.filter(l => l.id !== item.id));
+    setTrash(prev => [...prev, { ...item, type, deletedAt: new Date().toISOString() }]);
+    closeModal('leadDetail');
+    notify('Moved to trash');
+  }, [notify]);
+
+  const restoreFromTrash = useCallback((item) => {
+    if (item.type === 'call') { setCallLog(prev => [item, ...prev]); setDailyStats(prev => ({ ...prev, [new Date(item.timestamp).toDateString()]: (prev[new Date(item.timestamp).toDateString()] || 0) + 1 })); }
+    else if (item.type === 'lead') setLeads(prev => [...prev, item]);
+    else if (item.type === 'dnc') setDncList(prev => [...prev, item]);
+    else if (item.type === 'dead') setDeadLeads(prev => [...prev, item]);
+    else if (item.type === 'converted') setConvertedLeads(prev => [...prev, item]);
+    setTrash(prev => prev.filter(t => !(t.id === item.id && t.type === item.type)));
+    notify('Restored from trash');
+  }, [notify]);
+
+  const emptyTrash = useCallback(() => { if (trash.length && confirm(`Delete ${trash.length} items permanently?`)) { setTrash([]); notify('Trash emptied'); } }, [trash, notify]);
+
+  // Call actions
+  const deleteCall = useCallback((callId) => {
+    const call = callLog.find(c => c.id === callId);
+    if (!call) return;
+    setTrash(prev => [...prev, { ...call, type: 'call', deletedAt: new Date().toISOString() }]);
+    setCallLog(prev => prev.filter(c => c.id !== callId));
+    setDailyStats(prev => ({ ...prev, [new Date(call.timestamp).toDateString()]: Math.max(0, (prev[new Date(call.timestamp).toDateString()] || 1) - 1) }));
+    if (call.leadId) setLeads(prev => prev.map(l => l.id === call.leadId ? { ...l, callCount: Math.max(0, (l.callCount || 1) - 1), callHistory: (l.callHistory || []).filter(h => h.id !== callId) } : l));
+    notify('Call deleted');
+  }, [callLog, notify]);
+
+  const updateCall = useCallback((call) => { setCallLog(prev => prev.map(c => c.id === call.id ? call : c)); closeModal('editCall'); notify('Call updated'); }, [notify]);
+
+  // Golf course actions
+  const addGolfCourse = useCallback((data) => { if (!data.name) { notify('Name required'); return false; } setGolfCourses(prev => [...prev, { id: generateId(), ...data, createdAt: new Date().toISOString() }]); notify(' Course added'); return true; }, [notify]);
+  const updateGolfCourse = useCallback((course) => { setGolfCourses(prev => prev.map(gc => gc.id === course.id ? course : gc)); closeModal('editGolfCourse'); notify('Course updated'); }, [notify]);
+  const deleteGolfCourse = useCallback((id) => { if (confirm('Delete course?')) { setGolfCourses(prev => prev.filter(gc => gc.id !== id)); if (settings.activeGolfCourse === id) setSettings(prev => ({ ...prev, activeGolfCourse: null })); notify('Course deleted'); } }, [settings.activeGolfCourse, notify]);
+
+  // Record a sale
+  const recordSale = useCallback((saleData) => {
+    const sale = {
+      id: generateId(),
+      leadId: saleData.leadId || null,
+      leadName: saleData.leadName || 'Walk-in',
+      saleDate: new Date().toISOString(),
+      saleType: saleData.type,
+      amount: saleData.amount,
+      saleCount: saleData.saleCount || 1,
+      notes: saleData.notes || '',
+      golfCourseId: settings.activeGolfCourse
+    };
+    setSales(prev => [sale, ...prev]);
+    notify(` SALE recorded! $${saleData.amount}`);
+    closeModal('recordSale');
+    return true;
+  }, [notify, settings.activeGolfCourse]);
+
+  // Get current list with sorting
   // Analytics
   const analytics = useMemo(() => {
     const now = new Date();
@@ -373,12 +457,13 @@ export function CRMProvider({ children }) {
     };
   }, [callLog, dailyStats, analyticsRange, sales]);
 
-  const clearAllData = useCallback(() => { if (confirm('Clear ALL data?')) { setLeads([]); setDncList([]); setDeadLeads([]); setConvertedLeads([]); setTrash([]); setEmails([]); setCallLog([]); setDailyStats({}); setSales([]); notify('🗑️ Data cleared'); } }, [notify]);
+  const clearAllData = useCallback(() => { if (confirm('Clear ALL data?')) { setLeads([]); setDncList([]); setDeadLeads([]); setConvertedLeads([]); setTrash([]); setEmails([]); setCallLog([]); setDailyStats({}); setSales([]); notify('Data cleared'); } }, [notify]);
 
   return (
     <CRMContext.Provider value={{
+      users, currentUserId, currentUser, addUser, updateUser, deleteUser, setCurrentUser,
       leads, dncList, deadLeads, convertedLeads, trash, emails, callLog, dailyStats, golfCourses, sales, settings, setSettings,
-      view, setView, selectedIndex, setSelectedIndex, notification, searchQuery, setSearchQuery, analyticsRange, setAnalyticsRange, sortBy, setSortBy, filters, updateFilters, clearFilters,
+      view, setView, selectedIndex, setSelectedIndex, notification, searchQuery, setSearchQuery, analyticsRange, setAnalyticsRange, sortBy, setSortBy, filters, updateFilters, clearFilters, session, startSession, stopSession, sessionNext,
       modals, openModal, closeModal, closeAllModals,
       todaysCalls, progress, hotLeads, activeGolfCourse, followUps, overdueCount, analytics, todaysSales, weekSales,
       notify, tallyCall, quickLogEmail, addLead, updateLead, moveToDNC, moveToDead, restoreFromDNC, restoreFromDead, 
@@ -391,4 +476,9 @@ export function CRMProvider({ children }) {
   );
 }
 
-export const useCRM = () => { const ctx = useContext(CRMContext); if (!ctx) throw new Error('useCRM must be within CRMProvider'); return ctx; };
+
+export const useCRM = () => {
+  const ctx = useContext(CRMContext);
+  if (!ctx) throw new Error('useCRM must be within CRMProvider');
+  return ctx;
+};

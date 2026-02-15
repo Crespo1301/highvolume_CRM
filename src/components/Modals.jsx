@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { useCRM } from '../context/CRMContext';
 import { colors, buttonBase, inputBase } from '../utils/theme.jsx';
 import { formatDate, formatDateTime, formatDateForInput, formatDateDisplay, isOverdue, generateId, INDUSTRIES, SOURCES, parseDateInput, SALE_TYPES } from '../utils/helpers';
+import { IconX } from './Icons';
 
 const Modal = ({ children, onClose }) => (
   <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999, backdropFilter: 'blur(4px)' }} onClick={onClose}>
@@ -23,7 +24,7 @@ const DateInput = ({ value, onChange, label }) => {
       <label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>{label}</label>
       <div onClick={() => inputRef.current?.showPicker?.() || inputRef.current?.focus()} style={{ ...inputBase, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <span style={{ color: displayValue ? colors.text : colors.textDim }}>{displayValue || 'Click to select'}</span>
-        <span style={{ color: colors.textDim }}>📅</span>
+        <span style={{ color: colors.textDim }}></span>
         <input ref={inputRef} type="date" value={formatDateForInput(value)} onChange={e => onChange(parseDateInput(e.target.value))} style={{ position: 'absolute', opacity: 0, width: 0, height: 0, pointerEvents: 'none' }} />
       </div>
     </div>
@@ -42,7 +43,7 @@ export function HelpModal() {
   return (
     <Modal onClose={() => closeModal('help')}>
       <ModalBox maxWidth={800}>
-        <h2 style={{ color: colors.primary, marginBottom: 20, fontSize: 20 }}>⌨️ Keyboard Shortcuts</h2>
+        <h2 style={{ color: colors.primary, marginBottom: 20, fontSize: 20 }}>️ Keyboard Shortcuts</h2>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 20 }}>
           {shortcuts.map(([title, items]) => (
             <div key={title}>
@@ -67,7 +68,7 @@ export function SettingsModal() {
   return (
     <Modal onClose={() => closeModal('settings')}>
       <ModalBox maxWidth={420}>
-        <h2 style={{ color: colors.text, marginBottom: 20, fontSize: 18 }}>⚙️ Settings</h2>
+        <h2 style={{ color: colors.text, marginBottom: 20, fontSize: 18 }}>️ Settings</h2>
         <div style={{ marginBottom: 16 }}>
           <label style={{ display: 'block', color: colors.textMuted, marginBottom: 6, fontSize: 12 }}>Daily Call Goal</label>
           <input type="number" value={settings.dailyGoal} onChange={e => setSettings(p => ({ ...p, dailyGoal: parseInt(e.target.value) || 150 }))} style={inputBase} />
@@ -83,7 +84,7 @@ export function SettingsModal() {
             {golfCourses.map(gc => <option key={gc.id} value={gc.id}>{gc.name}</option>)}
           </select>
         </div>
-        <button onClick={clearAllData} style={{ ...buttonBase, width: '100%', background: colors.danger, color: '#fff', marginBottom: 10 }}>🗑️ Clear All Data</button>
+        <button onClick={clearAllData} style={{ ...buttonBase, width: '100%', background: colors.danger, color: '#fff', marginBottom: 10 }}>️ Clear All Data</button>
         <button onClick={() => closeModal('settings')} style={{ ...buttonBase, width: '100%', background: colors.bgCard, color: colors.text }}>Close</button>
       </ModalBox>
     </Modal>
@@ -97,10 +98,10 @@ export function ImportModal() {
   const doImport = () => {
     try {
       const json = JSON.parse(data);
-      if (json.leads) { setLeads(p => [...p, ...json.leads.map(l => ({ ...l, id: generateId() }))]); notify('✅ Imported!'); closeModal('import'); setData(''); return; }
+      if (json.leads) { setLeads(p => [...p, ...json.leads.map(l => ({ ...l, id: generateId() }))]); notify(' Imported!'); closeModal('import'); setData(''); return; }
     } catch { /* not JSON */ }
     const lines = data.trim().split('\n');
-    if (lines.length < 2) { notify('❌ No data'); return; }
+    if (lines.length < 2) { notify(' No data'); return; }
     const headers = lines[0].split(',').map(h => h.replace(/"/g, '').trim().toLowerCase());
     const newLeads = lines.slice(1).map(line => {
       const vals = line.match(/(".*?"|[^,]+)/g)?.map(v => v.replace(/^"|"$/g, '').trim()) || [];
@@ -115,13 +116,13 @@ export function ImportModal() {
       });
       return lead;
     }).filter(l => l.businessName || l.phone);
-    if (newLeads.length) { setLeads(p => [...p, ...newLeads]); notify(`✅ Imported ${newLeads.length} leads!`); closeModal('import'); setData(''); }
-    else notify('❌ No valid leads');
+    if (newLeads.length) { setLeads(p => [...p, ...newLeads]); notify(` Imported ${newLeads.length} leads!`); closeModal('import'); setData(''); }
+    else notify(' No valid leads');
   };
   return (
     <Modal onClose={() => closeModal('import')}>
       <ModalBox>
-        <h2 style={{ color: colors.primary, marginBottom: 12, fontSize: 18 }}>📥 Import Data</h2>
+        <h2 style={{ color: colors.primary, marginBottom: 12, fontSize: 18 }}> Import Data</h2>
         <textarea value={data} onChange={e => setData(e.target.value)} placeholder="Paste CSV or JSON..." style={{ ...inputBase, height: 180, resize: 'vertical' }} />
         <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
           <button onClick={doImport} style={{ ...buttonBase, flex: 1, background: colors.primary, color: '#fff' }}>Import</button>
@@ -291,7 +292,7 @@ export function LeadDetailModal() {
             <button onClick={() => openModal('editLead', lead)} style={{ ...buttonBase, background: colors.bgCard, color: colors.primary }}>✏️</button>
             <button onClick={() => tallyCall(lead)} style={{ ...buttonBase, background: colors.success, color: '#fff' }}>📞</button>
             {lead.email && <button onClick={() => quickLogEmail(lead)} style={{ ...buttonBase, background: colors.primary, color: '#fff' }}>📧</button>}
-            <button onClick={() => closeModal('leadDetail')} style={{ ...buttonBase, background: colors.bgCard, color: colors.textMuted }}>✕</button>
+            <button onClick={() => closeModal('leadDetail')} style={{ ...buttonBase, background: colors.bgCard, color: colors.textMuted }}><IconX size={16} /></button>
           </div>
         </div>
         
@@ -347,7 +348,7 @@ export function LeadDetailModal() {
               {lead.callHistory.slice().reverse().slice(0, 5).map((c, i) => (
                 <div key={i} style={{ padding: 8, background: colors.bgCard, borderRadius: 6, marginBottom: 4, fontSize: 11, display: 'flex', justifyContent: 'space-between' }}>
                   <span style={{ color: colors.textMuted }}>{formatDateTime(c.timestamp)}</span>
-                  <button onClick={() => deleteCall(c.id)} style={{ background: 'transparent', border: 'none', color: colors.danger, cursor: 'pointer', fontSize: 10 }}>🗑️</button>
+                  <button onClick={() => deleteCall(c.id)} style={{ background: 'transparent', border: 'none', color: colors.danger, cursor: 'pointer', fontSize: 10 }}>️</button>
                 </div>
               ))}
             </div>
@@ -358,7 +359,7 @@ export function LeadDetailModal() {
           <button onClick={() => { moveToDNC(lead); closeModal('leadDetail'); }} style={{ ...buttonBase, background: colors.warning, color: '#000' }}>🚫 DNC</button>
           <button onClick={() => { moveToDead(lead); closeModal('leadDetail'); }} style={{ ...buttonBase, background: colors.danger, color: '#fff' }}>💀 Dead</button>
           <button onClick={() => setShowConvert(true)} style={{ ...buttonBase, background: colors.success, color: '#fff', fontWeight: '600' }}>🎉 Convert + Sale</button>
-          <button onClick={() => deleteToTrash(lead, 'lead')} style={{ ...buttonBase, background: colors.bgCard, color: colors.danger, marginLeft: 'auto' }}>🗑️</button>
+          <button onClick={() => deleteToTrash(lead, 'lead')} style={{ ...buttonBase, background: colors.bgCard, color: colors.danger, marginLeft: 'auto' }}>️</button>
         </div>
       </ModalBox>
     </Modal>
@@ -376,7 +377,7 @@ export function EditLeadModal() {
       <ModalBox maxWidth={700}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
           <h2 style={{ color: colors.text, fontSize: 18 }}>✏️ Edit Lead</h2>
-          <button onClick={() => closeModal('editLead')} style={{ ...buttonBase, background: colors.bgCard, color: colors.textMuted }}>✕</button>
+          <button onClick={() => closeModal('editLead')} style={{ ...buttonBase, background: colors.bgCard, color: colors.textMuted }}><IconX size={16} /></button>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
           {[['businessName', 'Business Name', 2], ['contactName', 'Contact', 1], ['phone', 'Phone', 1], ['email', 'Email', 1], ['website', 'Website', 1], ['address', 'Address', 2]].map(([key, label, span]) => (
@@ -439,7 +440,7 @@ export function EditCallModal() {
       <ModalBox maxWidth={500}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
           <h2 style={{ color: colors.text, fontSize: 18 }}>✏️ Edit Call</h2>
-          <button onClick={() => closeModal('editCall')} style={{ ...buttonBase, background: colors.bgCard, color: colors.textMuted }}>✕</button>
+          <button onClick={() => closeModal('editCall')} style={{ ...buttonBase, background: colors.bgCard, color: colors.textMuted }}><IconX size={16} /></button>
         </div>
         <div style={{ display: 'grid', gap: 14 }}>
           <div><label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>Lead Name</label><input value={form.leadName || ''} onChange={e => setForm(f => ({ ...f, leadName: e.target.value }))} style={inputBase} /></div>

@@ -14,7 +14,8 @@ export const STORAGE_KEYS = {
   golfCourses: 'crm_golf_courses',
   sales: 'crm_sales',
   converted: 'crm_converted',
-  filters: 'crm_filters'
+  filters: 'crm_filters',
+  session: 'crm_session'
 };
 
 export const loadData = (key, defaultValue) => {

@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { useCRM } from '../context/CRMContext';
 import { colors, buttonBase, inputBase } from '../utils/theme.jsx';
 import { formatDate, formatDateTime, formatDateForInput, formatDateDisplay, isOverdue, INDUSTRIES, SOURCES, parseDateInput, SORT_OPTIONS, SALE_TYPES } from '../utils/helpers';
+import { IconPlay, IconStop, IconChevronRight, IconPhone, IconCalendar, IconCheck, IconBan, IconSkull, IconFlag } from './Icons';
 
 // Card component
 const Card = ({ title, color, borderColor, children }) => (
@@ -33,7 +34,7 @@ const DateInput = ({ value, onChange, label }) => {
         <span style={{ color: displayValue ? colors.text : colors.textDim }}>
           {displayValue || 'Click to select date'}
         </span>
-        <span style={{ color: colors.textDim }}>📅</span>
+        <span style={{ color: colors.textDim }}></span>
         <input
           ref={inputRef}
           type="date"
@@ -53,42 +54,51 @@ const DateInput = ({ value, onChange, label }) => {
 };
 
 // Dashboard
+
+function Pill({ label }) {
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', padding: '4px 10px', borderRadius: 999, fontSize: 12, background: colors.bg, border: `1px solid ${colors.border}`, color: colors.textDim }}>
+      {label}
+    </span>
+  );
+}
+
 export function Dashboard() {
   const { todaysCalls, settings, progress, leads, hotLeads, followUps, analytics, tallyCall, setView, openModal, activeGolfCourse, todaysSales, weekSales, convertedLeads } = useCRM();
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
-      <Card title="📊 Today" color={colors.success}>
+      <Card title=" Today" color={colors.success}>
         <Stat label="Calls" value={todaysCalls} color={colors.success} />
         <Stat label="Goal" value={settings.dailyGoal} />
         <Stat label="Progress" value={`${progress.toFixed(0)}%`} color={progress >= 100 ? colors.warning : colors.success} />
       </Card>
 
-      <Card title="💰 Sales Today" color={colors.warning} borderColor={todaysSales.count >= settings.dailySalesGoal ? colors.success : colors.border}>
+      <Card title=" Sales Today" color={colors.warning} borderColor={todaysSales.count >= settings.dailySalesGoal ? colors.success : colors.border}>
         <Stat label="Sales" value={todaysSales.count} color={todaysSales.count >= settings.dailySalesGoal ? colors.success : colors.warning} />
         <Stat label="Revenue" value={`$${todaysSales.revenue.toLocaleString()}`} color={colors.success} />
         <Stat label="Goal" value={`${settings.dailySalesGoal}/day`} />
       </Card>
 
-      <Card title="📅 This Week" color={colors.accent}>
+      <Card title=" This Week" color={colors.accent}>
         <Stat label="Sales" value={weekSales.count} color={colors.accent} />
         <Stat label="Revenue" value={`$${weekSales.revenue.toLocaleString()}`} color={colors.success} />
         <Stat label="Converted" value={convertedLeads.length} />
       </Card>
 
-      <Card title="🎯 Leads" color={colors.primary}>
+      <Card title=" Leads" color={colors.primary}>
         <Stat label="Active" value={leads.length} />
-        <Stat label="Hot 🔥" value={hotLeads} color={colors.danger} />
+        <Stat label="Hot " value={hotLeads} color={colors.danger} />
         <Stat label="Follow-ups" value={followUps.length} color={followUps.length > 0 ? colors.warning : colors.textMuted} />
       </Card>
 
-      <Card title="⚡ Quick Actions" color={colors.primary}>
-        <button onClick={() => tallyCall()} style={{ ...buttonBase, width: '100%', background: colors.success, color: '#fff', fontSize: 14, marginBottom: 10 }}>📞 Tally Call (Space)</button>
+      <Card title=" Quick Actions" color={colors.primary}>
+        <button onClick={() => tallyCall()} style={{ ...buttonBase, width: '100%', background: colors.success, color: '#fff', fontSize: 14, marginBottom: 10 }}> Tally Call (Space)</button>
         <button onClick={() => setView('addLead')} style={{ ...buttonBase, width: '100%', background: colors.bgLight, color: colors.warning, border: `1px solid ${colors.warning}`, marginBottom: 10 }}>+ New Lead</button>
-        <button onClick={() => openModal('recordSale', {})} style={{ ...buttonBase, width: '100%', background: colors.warning, color: '#000', fontWeight: '600' }}>💰 Record Sale</button>
+        <button onClick={() => openModal('recordSale', {})} style={{ ...buttonBase, width: '100%', background: colors.warning, color: '#000', fontWeight: '600' }}> Record Sale</button>
       </Card>
 
-      <Card title="📈 Last 7 Days" color={colors.textMuted}>
+      <Card title=" Last 7 Days" color={colors.textMuted}>
         <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, height: 100 }}>
           {analytics.dailyBreakdown.map((d, i) => {
             const max = Math.max(...analytics.dailyBreakdown.map(x => x.calls), 1);
@@ -105,7 +115,7 @@ export function Dashboard() {
       </Card>
 
       {followUps.length > 0 && (
-        <Card title="📅 Follow-ups Due" color={colors.warning} borderColor={colors.warning}>
+        <Card title=" Follow-ups Due" color={colors.warning} borderColor={colors.warning}>
           {followUps.slice(0, 4).map(l => (
             <div key={l.id} onClick={() => openModal('leadDetail', l)} style={{ padding: 12, background: colors.bgLight, borderRadius: 8, marginBottom: 8, cursor: 'pointer', borderLeft: `3px solid ${isOverdue(l.followUp) ? colors.danger : colors.warning}` }}>
               <div style={{ fontWeight: '600', fontSize: 13 }}>{l.businessName}</div>
@@ -117,7 +127,7 @@ export function Dashboard() {
       )}
 
       {activeGolfCourse && (
-        <Card title="⛳ Active Course" color={colors.accent} borderColor={colors.accent}>
+        <Card title=" Active Course" color={colors.accent} borderColor={colors.accent}>
           <div style={{ fontWeight: '600', fontSize: 16, marginBottom: 8 }}>{activeGolfCourse.name}</div>
           {activeGolfCourse.address && <div style={{ color: colors.textMuted, fontSize: 13 }}>{activeGolfCourse.address}</div>}
           {activeGolfCourse.phone && <div style={{ color: colors.textMuted, fontSize: 13 }}>{activeGolfCourse.phone}</div>}
@@ -277,7 +287,7 @@ const FilterHeader = ({ type }) => {
             title="Filter by priority"
           >
             <option value="all">All Priorities</option>
-            <option value="hot">🔥 Hot</option>
+            <option value="hot"> Hot</option>
             <option value="normal">Normal</option>
             <option value="low">Low</option>
           </select>
@@ -331,19 +341,20 @@ const FilterHeader = ({ type }) => {
 
 // List View (leads, dnc, dead, calllog, trash, emails, converted, sales)
 export function ListView({ type }) {
-  const { getCurrentList, selectedIndex, setSelectedIndex, openModal, restoreFromTrash, restoreFromDNC, restoreFromDead, unconvertLead, emptyTrash, trash, quickLogEmail } = useCRM();
+  const { view, getCurrentList, selectedIndex, setSelectedIndex, openModal, restoreFromTrash, restoreFromDNC, restoreFromDead, unconvertLead, emptyTrash, trash, quickLogEmail, session, startSession, stopSession, sessionNext, tallyCall, updateLead, convertLead, moveToDNC, moveToDead, notify } = useCRM();
   const list = getCurrentList();
 
   const titles = { 
-    leads: '🎯 Active Leads', 
-    followups: '📅 Follow-ups Due', 
-    dnc: '🚫 Do Not Call', 
-    dead: '💀 Dead Leads', 
-    converted: '🎉 Converted (Sales)',
-    calllog: '📞 Call Log', 
-    trash: '🗑️ Trash', 
-    emails: '📧 Emails',
-    sales: '💰 Sales History'
+    leads: 'Active Leads',
+    followups: 'Follow-ups',
+    dnc: 'Do Not Call',
+    dead: 'Dead Leads',
+    converted: 'Converted',
+    calllog: 'Call Log',
+    sales: 'Sales',
+    trash: 'Trash',
+    emails: 'Email Log',
+    golfcourses: 'Golf Courses'
   };
   
   const hints = { 
@@ -369,6 +380,96 @@ export function ListView({ type }) {
             <button onClick={emptyTrash} style={{ ...buttonBase, padding: '6px 12px', background: colors.danger, color: '#fff', fontSize: 11 }}>Empty Trash</button>
           )}
         </div>
+
+      {session?.active && ['leads', 'followups'].includes(type) && (
+        <div style={{ marginBottom: 14, padding: 14, borderRadius: 14, background: colors.bgCard, border: `1px solid ${colors.border}`, boxShadow: '0 10px 30px rgba(0,0,0,0.25)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+            <div style={{ fontSize: 12, color: colors.textDim, textTransform: 'uppercase', letterSpacing: 0.8 }}>
+              Dial Session • {type === 'followups' ? 'Follow-ups' : 'Leads'}
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={sessionNext} style={{ ...buttonBase, background: colors.accent, color: '#001018', fontWeight: 750 }}>
+                Next <IconChevronRight size={16} style={{ marginLeft: 6 }} />
+              </button>
+              <button onClick={stopSession} style={{ ...buttonBase, background: colors.bg, border: `1px solid ${colors.border}`, color: colors.text }}>
+                <IconStop size={16} style={{ marginRight: 8 }} /> Stop
+              </button>
+            </div>
+          </div>
+
+          {(() => {
+            const lead = (session.leadId ? list.find(l => l.id === session.leadId) : null) || list[selectedIndex];
+            if (!lead) return <div style={{ marginTop: 12, color: colors.textDim }}>No leads match your current filters.</div>;
+
+            const setFollowUpDays = (days) => {
+              const dt = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+              const iso = dt.toISOString();
+              updateLead({ ...lead, followUp: iso });
+              notify(`Follow-up scheduled in ${days} day${days === 1 ? '' : 's'}`);
+              sessionNext();
+            };
+
+            return (
+              <div style={{ marginTop: 12, display: 'grid', gridTemplateColumns: '1fr auto', gap: 12, alignItems: 'start' }}>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                    <div style={{ fontSize: 18, fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {lead.businessName || lead.contactName || 'Lead'}
+                    </div>
+                    {lead.phone && (
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'monospace', fontSize: 12, padding: '4px 8px', borderRadius: 999, background: colors.bg, border: `1px solid ${colors.border}` }}>
+                        <IconPhone size={14} /> {lead.phone}
+                      </div>
+                    )}
+                    {lead.followUp && (
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, padding: '4px 8px', borderRadius: 999, background: colors.bg, border: `1px solid ${colors.border}` }}>
+                        <IconCalendar size={14} /> {new Date(lead.followUp).toLocaleDateString()}
+                      </div>
+                    )}
+                  </div>
+
+                  <div style={{ marginTop: 8, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    {lead.industry && <Pill label={lead.industry} />}
+                    {lead.priority && <Pill label={lead.priority} />}
+                    {lead.source && <Pill label={lead.source} />}
+                  </div>
+
+                  {lead.notes && (
+                    <div style={{ marginTop: 10, color: colors.text, fontSize: 13, opacity: 0.9, whiteSpace: 'pre-wrap' }}>
+                      {lead.notes}
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 240 }}>
+                  <button onClick={() => tallyCall(lead, 'completed', '')} style={{ ...buttonBase, background: colors.success, color: '#001018', fontWeight: 800 }}>
+                    <IconPhone size={16} style={{ marginRight: 8 }} /> Log Call
+                  </button>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                    <button onClick={() => setFollowUpDays(2)} style={{ ...buttonBase, background: colors.warning, color: '#001018', fontWeight: 800 }}>
+                      <IconFlag size={16} style={{ marginRight: 8 }} /> Follow-up
+                    </button>
+                    <button onClick={() => { convertLead(lead); sessionNext(); }} style={{ ...buttonBase, background: colors.accent, color: '#001018', fontWeight: 800 }}>
+                      <IconCheck size={16} style={{ marginRight: 8 }} /> Converted
+                    </button>
+                    <button onClick={() => { moveToDNC(lead); sessionNext(); }} style={{ ...buttonBase, background: colors.bg, border: `1px solid ${colors.border}`, color: colors.text, fontWeight: 750 }}>
+                      <IconBan size={16} style={{ marginRight: 8 }} /> DNC
+                    </button>
+                    <button onClick={() => { moveToDead(lead); sessionNext(); }} style={{ ...buttonBase, background: colors.bg, border: `1px solid ${colors.border}`, color: colors.text, fontWeight: 750 }}>
+                      <IconSkull size={16} style={{ marginRight: 8 }} /> Dead
+                    </button>
+                  </div>
+
+                  <button onClick={() => openModal('editLead', lead)} style={{ ...buttonBase, background: colors.bg, border: `1px solid ${colors.border}`, color: colors.text }}>
+                    Edit Lead
+                  </button>
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+      )}
       </div>
       <div style={{ maxHeight: 500, overflowY: 'auto' }}>
         {list.map((item, idx) => (
@@ -418,7 +519,7 @@ export function ListView({ type }) {
             ) : type === 'converted' ? (
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
-                  <div style={{ fontSize: 14, fontWeight: '600' }}>🎉 {item.businessName}</div>
+                  <div style={{ fontSize: 14, fontWeight: '600' }}> {item.businessName}</div>
                   <div style={{ color: colors.textMuted, fontSize: 12 }}>{item.contactName && `${item.contactName} • `}{item.phone}</div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -452,7 +553,7 @@ export function ListView({ type }) {
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <div>
                   <div style={{ fontSize: 14, fontWeight: '600' }}>
-                    {item.priority === 'hot' && '🔥 '}{item.businessName}
+                    {item.priority === 'hot' && ' '}{item.businessName}
                     {item.industry && <span style={{ color: colors.textDim, fontSize: 11, marginLeft: 8 }}>({item.industry})</span>}
                   </div>
                   <div style={{ color: colors.textMuted, fontSize: 12 }}>{item.contactName && `${item.contactName} • `}{item.phone}</div>
@@ -463,7 +564,7 @@ export function ListView({ type }) {
                   )}
                   <div style={{ textAlign: 'right' }}>
                     {['leads', 'followups'].includes(type) && <div style={{ color: colors.success, fontSize: 13, fontWeight: '600' }}>{item.callCount || 0} calls</div>}
-                    {item.followUp && <div style={{ color: isOverdue(item.followUp) ? colors.danger : colors.textDim, fontSize: 11 }}>📅 {formatDate(item.followUp)}</div>}
+                    {item.followUp && <div style={{ color: isOverdue(item.followUp) ? colors.danger : colors.textDim, fontSize: 11 }}> {formatDate(item.followUp)}</div>}
                   </div>
                 </div>
               </div>
@@ -488,7 +589,7 @@ export function GolfCoursesView() {
   return (
     <div style={{ display: 'grid', gap: 16 }}>
       <div style={{ background: colors.bgCard, borderRadius: 12, padding: 20, border: `1px solid ${colors.accent}` }}>
-        <h3 style={{ color: colors.accent, marginBottom: 16, fontSize: 14, fontWeight: '600' }}>⛳ Add Golf Course</h3>
+        <h3 style={{ color: colors.accent, marginBottom: 16, fontSize: 14, fontWeight: '600' }}> Add Golf Course</h3>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
           {['name', 'address', 'phone', 'contactName', 'email', 'region'].map(key => (
             <input key={key} placeholder={key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1') + (key === 'name' ? ' *' : '')} value={form[key]} onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))} style={inputBase} />
@@ -499,7 +600,7 @@ export function GolfCoursesView() {
 
       <div style={{ background: colors.bgCard, borderRadius: 12, border: `1px solid ${colors.border}`, overflow: 'hidden' }}>
         <div style={{ padding: '14px 20px', background: colors.bgLight, borderBottom: `1px solid ${colors.border}` }}>
-          <h2 style={{ fontSize: 15, color: colors.text, fontWeight: '600' }}>⛳ Golf Courses ({golfCourses.length})</h2>
+          <h2 style={{ fontSize: 15, color: colors.text, fontWeight: '600' }}> Golf Courses ({golfCourses.length})</h2>
         </div>
         <div style={{ maxHeight: 400, overflowY: 'auto' }}>
           {golfCourses.map((gc, idx) => (
@@ -509,7 +610,7 @@ export function GolfCoursesView() {
                   <div style={{ fontWeight: '600', fontSize: 14 }}>{gc.name} {settings.activeGolfCourse === gc.id && <span style={{ color: colors.accent, fontSize: 11 }}>✓ Active</span>}</div>
                   <div style={{ color: colors.textMuted, fontSize: 12 }}>{gc.address} {gc.region && `• ${gc.region}`}</div>
                 </div>
-                <button onClick={e => { e.stopPropagation(); setSettings(p => ({ ...p, activeGolfCourse: gc.id })); notify(`⛳ ${gc.name} set as active`); }} style={{ ...buttonBase, padding: '6px 12px', background: settings.activeGolfCourse === gc.id ? colors.bgLight : colors.accent, color: settings.activeGolfCourse === gc.id ? colors.textMuted : '#fff', fontSize: 11 }}>
+                <button onClick={e => { e.stopPropagation(); setSettings(p => ({ ...p, activeGolfCourse: gc.id })); notify(` ${gc.name} set as active`); }} style={{ ...buttonBase, padding: '6px 12px', background: settings.activeGolfCourse === gc.id ? colors.bgLight : colors.accent, color: settings.activeGolfCourse === gc.id ? colors.textMuted : '#fff', fontSize: 11 }}>
                   {settings.activeGolfCourse === gc.id ? 'Active' : 'Set Active'}
                 </button>
               </div>
@@ -578,7 +679,7 @@ export function AddLeadForm() {
           <label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>Priority</label>
           <select value={form.priority} onChange={e => setForm(f => ({ ...f, priority: e.target.value }))} style={inputBase}>
             <option value="normal">Normal</option>
-            <option value="hot">🔥 Hot</option>
+            <option value="hot"> Hot</option>
             <option value="low">Low</option>
           </select>
         </div>
@@ -617,16 +718,16 @@ export function SalesView() {
   return (
     <div style={{ display: 'grid', gap: 16 }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
-        <Card title="💰 Today" color={colors.warning}>
+        <Card title=" Today" color={colors.warning}>
           <Stat label="Sales" value={todaysSales.count} color={todaysSales.count >= settings.dailySalesGoal ? colors.success : colors.text} />
           <Stat label="Revenue" value={`$${todaysSales.revenue.toLocaleString()}`} color={colors.success} />
         </Card>
-        <Card title="📅 This Week" color={colors.accent}>
+        <Card title=" This Week" color={colors.accent}>
           <Stat label="Sales" value={weekSales.count} color={colors.accent} />
           <Stat label="Revenue" value={`$${weekSales.revenue.toLocaleString()}`} color={colors.success} />
         </Card>
-        <Card title="⚡ Quick Add" color={colors.primary}>
-          <button onClick={() => openModal('recordSale', {})} style={{ ...buttonBase, width: '100%', background: colors.warning, color: '#000', fontWeight: '600' }}>💰 Record Sale</button>
+        <Card title=" Quick Add" color={colors.primary}>
+          <button onClick={() => openModal('recordSale', {})} style={{ ...buttonBase, width: '100%', background: colors.warning, color: '#000', fontWeight: '600' }}> Record Sale</button>
         </Card>
       </div>
       

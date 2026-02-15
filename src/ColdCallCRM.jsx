@@ -48,7 +48,7 @@ function CRMApp() {
           padding: '8px 24px', borderRadius: 20, 
           fontWeight: '600', zIndex: 100, fontSize: 13 
         }}>
-          🔍 {searchQuery}
+           {searchQuery}
         </div>
       )}
 

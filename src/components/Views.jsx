@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useCRM } from '../context/CRMContext';
 import { colors, buttonBase, inputBase } from '../utils/theme.jsx';
-import { formatDate, formatDateTime, formatDateForInput, formatDateDisplay, isOverdue, INDUSTRIES, SOURCES, parseDateInput, SORT_OPTIONS, SALE_TYPES } from '../utils/helpers';
+import { formatDate, formatDateTime, formatFollowUpDisplay, formatDateForInput, formatDateDisplay, isOverdue, INDUSTRIES, SOURCES, parseDateInput, SORT_OPTIONS, SALE_TYPES } from '../utils/helpers';
 import { IconPlay, IconStop, IconChevronRight, IconPhone, IconCalendar, IconCheck, IconBan, IconSkull, IconFlag } from './Icons';
 
 // Card component
@@ -66,17 +66,6 @@ function Pill({ label }) {
 export function Dashboard() {
   const { todaysCalls, settings, progress, leads, hotLeads, followUps, analytics, tallyCall, setView, openModal, activeGolfCourse, todaysSales, weekSales, convertedLeads } = useCRM();
 
-  const priorityCounts = React.useMemo(() => {
-    const counts = { hot: 0, normal: 0, low: 0 };
-    (leads || []).forEach(l => {
-      const p = (l.priority || 'normal');
-      if (p === 'hot') counts.hot += 1;
-      else if (p === 'low') counts.low += 1;
-      else counts.normal += 1;
-    });
-    return counts;
-  }, [leads]);
-
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
       <Card title=" Today" color={colors.success}>
@@ -99,20 +88,8 @@ export function Dashboard() {
 
       <Card title=" Leads" color={colors.primary}>
         <Stat label="Active" value={leads.length} />
-        <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
-          <span style={{ padding: '6px 10px', borderRadius: 999, background: 'rgba(255,107,107,0.12)', border: `1px solid rgba(255,107,107,0.25)`, color: colors.danger, fontSize: 12, fontWeight: 650 }}>
-            Hot: {priorityCounts.hot}
-          </span>
-          <span style={{ padding: '6px 10px', borderRadius: 999, background: 'rgba(77,171,247,0.10)', border: `1px solid rgba(77,171,247,0.20)`, color: colors.accent, fontSize: 12, fontWeight: 650 }}>
-            Normal: {priorityCounts.normal}
-          </span>
-          <span style={{ padding: '6px 10px', borderRadius: 999, background: 'rgba(160,174,192,0.12)', border: `1px solid rgba(160,174,192,0.22)`, color: colors.textMuted, fontSize: 12, fontWeight: 650 }}>
-            Low: {priorityCounts.low}
-          </span>
-        </div>
-        <div style={{ marginTop: 10 }}>
-          <Stat label="Follow-ups" value={followUps.length} color={followUps.length > 0 ? colors.warning : colors.textMuted} />
-        </div>
+        <Stat label="Hot " value={hotLeads} color={colors.danger} />
+        <Stat label="Follow-ups" value={followUps.length} color={followUps.length > 0 ? colors.warning : colors.textMuted} />
       </Card>
 
       <Card title=" Quick Actions" color={colors.primary}>
@@ -142,7 +119,7 @@ export function Dashboard() {
           {followUps.slice(0, 4).map(l => (
             <div key={l.id} onClick={() => openModal('leadDetail', l)} style={{ padding: 12, background: colors.bgLight, borderRadius: 8, marginBottom: 8, cursor: 'pointer', borderLeft: `3px solid ${isOverdue(l.followUp) ? colors.danger : colors.warning}` }}>
               <div style={{ fontWeight: '600', fontSize: 13 }}>{l.businessName}</div>
-              <div style={{ color: isOverdue(l.followUp) ? colors.danger : colors.textMuted, fontSize: 11 }}>{formatDate(l.followUp)} {isOverdue(l.followUp) && '(OVERDUE)'}</div>
+              <div style={{ color: isOverdue(l.followUp) ? colors.danger : colors.textMuted, fontSize: 11 }}>{formatFollowUpDisplay(l.followUp)} {isOverdue(l.followUp) && '(OVERDUE)'}</div>
             </div>
           ))}
           {followUps.length > 4 && <button onClick={() => setView('followups')} style={{ ...buttonBase, width: '100%', background: 'transparent', color: colors.warning, border: `1px solid ${colors.border}`, fontSize: 12 }}>View all {followUps.length} →</button>}
@@ -587,7 +564,7 @@ export function ListView({ type }) {
                   )}
                   <div style={{ textAlign: 'right' }}>
                     {['leads', 'followups'].includes(type) && <div style={{ color: colors.success, fontSize: 13, fontWeight: '600' }}>{item.callCount || 0} calls</div>}
-                    {item.followUp && <div style={{ color: isOverdue(item.followUp) ? colors.danger : colors.textDim, fontSize: 11 }}> {formatDate(item.followUp)}</div>}
+                    {item.followUp && <div style={{ color: isOverdue(item.followUp) ? colors.danger : colors.textDim, fontSize: 11 }}> {formatFollowUpDisplay(item.followUp)}</div>}
                   </div>
                 </div>
               </div>

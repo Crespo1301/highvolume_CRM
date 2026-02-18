@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useCRM } from '../context/CRMContext';
 import { colors, buttonBase, inputBase } from '../utils/theme.jsx';
-import { formatDate, formatDateTime, formatDateForInput, formatDateDisplay, isOverdue, generateId, INDUSTRIES, SOURCES, parseDateInput, SALE_TYPES } from '../utils/helpers';
+import { formatDate, formatFollowUpDisplay, formatDateTime, formatDateForInput, formatDateDisplay, isOverdue, generateId, INDUSTRIES, SOURCES, parseDateInput, SALE_TYPES } from '../utils/helpers';
 import { IconX } from './Icons';
 
 const Modal = ({ children, onClose }) => (
@@ -320,7 +320,7 @@ export function LeadDetailModal() {
           </div>
           <div style={{ background: colors.bgCard, padding: 16, borderRadius: 10, textAlign: 'center' }}>
             <div style={{ fontSize: 11, color: isOverdue(lead.followUp) ? colors.danger : colors.textDim }}>Follow Up</div>
-            <div style={{ fontSize: 13, marginTop: 4, color: isOverdue(lead.followUp) ? colors.danger : colors.text }}>{formatDate(lead.followUp) || '—'}</div>
+            <div style={{ fontSize: 13, marginTop: 4, color: isOverdue(lead.followUp) ? colors.danger : colors.text }}>{formatFollowUpDisplay(lead.followUp) || '—'}</div>
           </div>
         </div>
 

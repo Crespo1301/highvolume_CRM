@@ -1,13 +1,12 @@
 import React from 'react';
 import { useCRM } from '../context/CRMContext';
 import { colors, buttonBase } from '../utils/theme.jsx';
-import { IconCalendar, IconGolf, IconPlay, IconStop, IconChevronRight } from './Icons';
+import { IconCalendar, IconGolf } from './Icons';
 
 export function Header() {
-  const { todaysCalls, progress, settings, activeGolfCourse, followUps, overdueCount, setView, view, session, startSession, stopSession, sessionNext } = useCRM();
+  const {todaysCalls,progress,settings,activeGolfCourse,followUps,overdueCount,setView,view} = useCRM();
   const remaining = Math.max(0, settings.dailyGoal - todaysCalls);
 
-  const canSession = ['leads', 'followups'].includes(view);
 
   return (
     <>
@@ -26,7 +25,7 @@ export function Header() {
           <p style={{ color: colors.textDim, fontSize: 12 }}>
             Press <span style={{ background: colors.bgCard, padding: '2px 6px', borderRadius: 4, fontFamily: 'monospace' }}>/</span> for shortcuts •
             <span style={{ marginLeft: 8, fontFamily: 'monospace', color: colors.textDim }}>N</span> next •
-            <span style={{ marginLeft: 8, fontFamily: 'monospace', color: colors.textDim }}>S</span> session
+            <span style={{ marginLeft: 8, fontFamily: 'monospace', color: colors.textDim }}>O</span> settings
           </p>
         </div>
 
@@ -38,24 +37,6 @@ export function Header() {
               {overdueCount > 0 && <span style={{ marginLeft: 8, color: colors.danger, fontWeight: 700 }}>({overdueCount} overdue)</span>}
             </button>
           )}
-
-          {canSession && (
-            session.active ? (
-              <>
-                <button onClick={sessionNext} style={{ ...buttonBase, background: colors.accent, color: '#001018', fontWeight: 750 }}>
-                  Next <IconChevronRight size={16} style={{ marginLeft: 6 }} />
-                </button>
-                <button onClick={stopSession} style={{ ...buttonBase, background: colors.bgCard, border: `1px solid ${colors.border}`, color: colors.text }}>
-                  <IconStop size={16} style={{ marginRight: 8 }} /> Session
-                </button>
-              </>
-            ) : (
-              <button onClick={() => startSession(view)} style={{ ...buttonBase, background: colors.bgCard, border: `1px solid ${colors.border}`, color: colors.text, fontWeight: 650 }}>
-                <IconPlay size={16} style={{ marginRight: 8 }} /> Start Session
-              </button>
-            )
-          )}
-
           <div style={{ textAlign: 'right' }}>
             <div style={{ fontSize: 11, color: colors.textDim, textTransform: 'uppercase' }}>Today</div>
             <div style={{ fontSize: 34, fontWeight: '800', color: colors.success, lineHeight: 1 }}>{todaysCalls}</div>

@@ -21,62 +21,16 @@ export function CRMProvider({ children }) {
   const [view, setView] = useState('dashboard');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [notification, setNotification] = useState('');
-
-  const notify = useCallback((msg) => { setNotification(msg); setTimeout(() => setNotification(''), 2500); }, []);
-
   const [searchQuery, setSearchQuery] = useState('');
   const [analyticsRange, setAnalyticsRange] = useState('week');
   const [sortBy, setSortBy] = useState('newest');
   const [filters, setFilters] = useState(() => loadData(STORAGE_KEYS.filters, { golfCourseId: 'all', industry: 'all', priority: 'all', source: 'all', outcome: 'all', saleType: 'all' }));
-  const [session, setSession] = useState(() => loadData(STORAGE_KEYS.session, { active: false, view: 'leads', leadId: null }));
-
   // Modal state
   const [modals, setModals] = useState({
     help: false, import: false, export: false, settings: false, privacy: false, terms: false,
     leadDetail: null, editLead: null, editCall: null, editGolfCourse: null, recordSale: null
   });
 
-  // Users / reps
-  const [users, setUsers] = useState(() => loadData('crm_users', [{ id: 'u_default', name: 'Default Rep', role: 'Rep', active: true }]));
-  const [currentUserId, setCurrentUserId] = useState(() => loadData('crm_current_user_id', 'u_default'));
-
-  const currentUser = useMemo(() => users.find(u => u.id === currentUserId) || users[0] || null, [users, currentUserId]);
-
-  // User management
-  const addUser = useCallback((data) => {
-    const name = (data?.name || '').trim();
-    if (!name) { notify('User name required'); return false; }
-    const u = { id: generateId(), name, role: (data?.role || 'Rep').trim(), active: data?.active !== false, createdAt: new Date().toISOString() };
-    setUsers(prev => [u, ...prev]);
-    if (!currentUserId) setCurrentUserId(u.id);
-    notify('User added');
-    return true;
-  }, [notify, currentUserId]);
-
-  const updateUser = useCallback((user) => {
-    setUsers(prev => prev.map(u => u.id === user.id ? user : u));
-    notify('User updated');
-  }, [notify]);
-
-  const deleteUser = useCallback((user) => {
-    if (users.length <= 1) { notify('You need at least one user'); return; }
-    if (confirm('Delete this user?')) {
-      setUsers(prev => prev.filter(u => u.id !== user.id));
-      if (currentUserId === user.id) {
-        const next = users.find(u => u.id !== user.id);
-        setCurrentUserId(next?.id || null);
-      }
-      notify('User deleted');
-    }
-  }, [users, currentUserId, notify]);
-
-  const setCurrentUser = useCallback((userId) => {
-    setCurrentUserId(userId);
-    notify('Active user changed');
-  }, [notify]);
-
-
-  
   const openModal = (key, value = true) => setModals(m => ({ ...m, [key]: value }));
   const closeModal = (key) => setModals(m => ({ ...m, [key]: key.includes('edit') || key.includes('Detail') || key === 'recordSale' ? null : false }));
   const closeAllModals = () => setModals({ help: false, import: false, export: false, settings: false, privacy: false, terms: false, leadDetail: null, editLead: null, editCall: null, editGolfCourse: null, recordSale: null });
@@ -87,9 +41,6 @@ export function CRMProvider({ children }) {
   useEffect(() => { saveData(STORAGE_KEYS.dead, deadLeads); }, [deadLeads]);
   useEffect(() => { saveData(STORAGE_KEYS.converted, convertedLeads); }, [convertedLeads]);
   useEffect(() => { saveData(STORAGE_KEYS.trash, trash); }, [trash]);
-  useEffect(() => saveData('crm_users', users), [users]);
-  useEffect(() => saveData('crm_current_user_id', currentUserId), [currentUserId]);
-
   useEffect(() => { saveData(STORAGE_KEYS.emails, emails); }, [emails]);
   useEffect(() => { saveData(STORAGE_KEYS.callLog, callLog); }, [callLog]);
   useEffect(() => { saveData(STORAGE_KEYS.stats, dailyStats); }, [dailyStats]);
@@ -134,6 +85,8 @@ export function CRMProvider({ children }) {
   }, [sales]);
 
   // Notification
+  const notify = useCallback((msg) => { setNotification(msg); setTimeout(() => setNotification(''), 2500); }, []);
+
   // Filters
   const updateFilters = useCallback((patch) => setFilters(prev => ({ ...prev, ...patch })), []);
   const clearFilters = useCallback(() => setFilters({ golfCourseId: 'all', industry: 'all', priority: 'all', source: 'all', outcome: 'all', saleType: 'all' }), []);
@@ -150,158 +103,6 @@ export function CRMProvider({ children }) {
     }
     notify(`Call tallied! Today: ${(dailyStats[today] || 0) + 1}`);
   }, [dailyStats, notify, settings.activeGolfCourse]);
-
-
-  const getListForView = useCallback((viewName) => {
-    const q = (searchQuery || '').toLowerCase();
-
-    const matchesSearch = (item) => {
-      if (!q) return true;
-      const hay = [
-        item.businessName,
-        item.contactName,
-        item.leadName,
-        item.phone,
-        item.email,
-        item.website
-      ].filter(Boolean).join(' ').toLowerCase();
-      return hay.includes(q);
-    };
-
-    const matchesCommonFilters = (item) => {
-      // Golf course filter applies to leads-like records, calls, and sales
-      if (filters?.golfCourseId && filters.golfCourseId !== 'all') {
-        if (filters.golfCourseId === 'unassigned') {
-          if (item.golfCourseId) return false;
-        } else if (item.golfCourseId !== filters.golfCourseId) return false;
-      }
-
-      // Lead-like filters
-      if (filters?.industry && filters.industry !== 'all') {
-        if ((item.industry || '') !== filters.industry) return false;
-      }
-      if (filters?.priority && filters.priority !== 'all') {
-        if ((item.priority || 'normal') !== filters.priority) return false;
-      }
-      if (filters?.source && filters.source !== 'all') {
-        if ((item.source || '') !== filters.source) return false;
-      }
-
-      // Call log filters
-      if (filters?.outcome && filters.outcome !== 'all') {
-        if ((item.outcome || '') !== filters.outcome) return false;
-      }
-
-      // Sales filters
-      if (filters?.saleType && filters.saleType !== 'all') {
-        if ((item.saleType || '') !== filters.saleType) return false;
-      }
-
-      return true;
-    };
-
-    const leadSorter = SORT_OPTIONS.find(s => s.key === sortBy)?.sort || SORT_OPTIONS[0].sort;
-
-    const callSorter = (a, b) => {
-      if (sortBy === 'alpha' || sortBy === 'alpha-desc') {
-
-        return (sortBy === 'alpha')
-          ? (a.leadName || '').localeCompare(b.leadName || '')
-          : (b.leadName || '').localeCompare(a.leadName || '');
-      }
-      const ak = a.timestamp || a.callDate || a.createdAt || 0;
-      const bk = b.timestamp || b.callDate || b.createdAt || 0;
-      if (sortBy === 'oldest') return new Date(ak) - new Date(bk);
-      return new Date(bk) - new Date(ak);
-    };
-
-    const salesSorter = (a, b) => {
-      if (sortBy === 'alpha' || sortBy === 'alpha-desc') {
-        return (sortBy === 'alpha')
-          ? (a.leadName || '').localeCompare(b.leadName || '')
-          : (b.leadName || '').localeCompare(a.leadName || '');
-      }
-      // Reuse "calls" sort key as "Highest Amount" in Sales view UI
-      if (sortBy === 'calls') return (b.amount || 0) - (a.amount || 0);
-      if (sortBy === 'oldest') return new Date(a.saleDate) - new Date(b.saleDate);
-      return new Date(b.saleDate) - new Date(a.saleDate);
-    };
-
-    const trashSorter = (a, b) => {
-      const ak = a.deletedAt || a.createdAt || 0;
-      const bk = b.deletedAt || b.createdAt || 0;
-      if (sortBy === 'oldest') return new Date(ak) - new Date(bk);
-      return new Date(bk) - new Date(ak);
-    };
-
-    const applyLeadPipeline = (arr) => arr.filter(matchesSearch).filter(matchesCommonFilters).sort(leadSorter);
-    const applyPlainPipeline = (arr, sorter) => arr.filter(matchesSearch).filter(matchesCommonFilters).sort(sorter);
-
-    switch (viewName) {
-      case 'leads': return applyLeadPipeline(leads);
-      case 'followups': return applyLeadPipeline(followUps);
-      case 'dnc': return applyLeadPipeline(dncList);
-      case 'dead': return applyLeadPipeline(deadLeads);
-      case 'converted':
-        return convertedLeads
-          .filter(matchesSearch)
-          .filter(matchesCommonFilters)
-          .sort((a, b) => {
-            if (sortBy === 'oldest') return new Date(a.convertedAt) - new Date(b.convertedAt);
-            if (sortBy === 'alpha' || sortBy === 'alpha-desc') {
-              return (sortBy === 'alpha')
-                ? (a.businessName || '').localeCompare(b.businessName || '')
-                : (b.businessName || '').localeCompare(a.businessName || '');
-            }
-            return new Date(b.convertedAt) - new Date(a.convertedAt);
-          });
-      case 'calllog': return applyPlainPipeline(callLog.slice(0, 1000), callSorter).slice(0, 100);
-      case 'sales': return applyPlainPipeline(sales, salesSorter);
-      case 'trash': return applyPlainPipeline(trash, trashSorter);
-      case 'emails':
-        return emails.filter(matchesSearch);
-      case 'golfcourses':
-        return golfCourses.filter(gc => !q || (gc.name || '').toLowerCase().includes(q));
-      default: return [];
-    }
-  }, [leads, followUps, dncList, deadLeads, convertedLeads, emails, callLog, trash, golfCourses, sales, searchQuery, sortBy, filters]);
-
-  const getCurrentList = useCallback(() => getListForView(view), [getListForView, view]);
-
-
-
-  const persistSession = useCallback((next) => saveData(STORAGE_KEYS.session, next), []);
-
-  const startSession = useCallback((targetView = view) => {
-    const list = getListForView(targetView);
-    const current = (targetView === view && list[selectedIndex]) ? list[selectedIndex] : list[0];
-    const next = { active: true, view: targetView, leadId: current?.id || null };
-    setSession(next);
-    persistSession(next);
-    setView(targetView);
-    setSelectedIndex(Math.max(0, list.findIndex(l => l.id === next.leadId)));
-    notify('Session started');
-  }, [getListForView, notify, persistSession, selectedIndex, setSelectedIndex, setView, view]);
-
-  const stopSession = useCallback(() => {
-    const next = { active: false, view: session.view || 'leads', leadId: null };
-    setSession(next);
-    persistSession(next);
-    notify('Session stopped');
-  }, [notify, persistSession, session.view]);
-
-  const sessionNext = useCallback(() => {
-    const list = getListForView(session.view || view);
-    if (!list.length) { notify('No records in this view'); return; }
-    const idx = session.leadId ? list.findIndex(l => l.id === session.leadId) : -1;
-    const nextIdx = Math.min(idx + 1, list.length - 1);
-    const nextLead = list[nextIdx];
-    const next = { ...session, active: true, view: session.view || view, leadId: nextLead?.id || null };
-    setSession(next);
-    persistSession(next);
-    setSelectedIndex(nextIdx);
-  }, [getListForView, notify, persistSession, session, setSelectedIndex, view]);
-
   // Quick email log (just mark that we emailed them)
   const quickLogEmail = useCallback((lead) => {
     const now = new Date().toISOString();
@@ -429,6 +230,122 @@ export function CRMProvider({ children }) {
   }, [notify, settings.activeGolfCourse]);
 
   // Get current list with sorting
+  const getListForView = useCallback((viewName) => {
+    const q = (searchQuery || '').toLowerCase();
+
+    const matchesSearch = (item) => {
+      if (!q) return true;
+      const hay = [
+        item.businessName,
+        item.contactName,
+        item.leadName,
+        item.phone,
+        item.email,
+        item.website
+      ].filter(Boolean).join(' ').toLowerCase();
+      return hay.includes(q);
+    };
+
+    const matchesCommonFilters = (item) => {
+      // Golf course filter applies to leads-like records, calls, and sales
+      if (filters?.golfCourseId && filters.golfCourseId !== 'all') {
+        if (filters.golfCourseId === 'unassigned') {
+          if (item.golfCourseId) return false;
+        } else if (item.golfCourseId !== filters.golfCourseId) return false;
+      }
+
+      // Lead-like filters
+      if (filters?.industry && filters.industry !== 'all') {
+        if ((item.industry || '') !== filters.industry) return false;
+      }
+      if (filters?.priority && filters.priority !== 'all') {
+        if ((item.priority || 'normal') !== filters.priority) return false;
+      }
+      if (filters?.source && filters.source !== 'all') {
+        if ((item.source || '') !== filters.source) return false;
+      }
+
+      // Call log filters
+      if (filters?.outcome && filters.outcome !== 'all') {
+        if ((item.outcome || '') !== filters.outcome) return false;
+      }
+
+      // Sales filters
+      if (filters?.saleType && filters.saleType !== 'all') {
+        if ((item.saleType || '') !== filters.saleType) return false;
+      }
+
+      return true;
+    };
+
+    const leadSorter = SORT_OPTIONS.find(s => s.key === sortBy)?.sort || SORT_OPTIONS[0].sort;
+
+    const callSorter = (a, b) => {
+      if (sortBy === 'alpha' || sortBy === 'alpha-desc') {
+        return (sortBy === 'alpha')
+          ? (a.leadName || '').localeCompare(b.leadName || '')
+          : (b.leadName || '').localeCompare(a.leadName || '');
+      }
+      const ak = a.timestamp || a.callDate || a.createdAt || 0;
+      const bk = b.timestamp || b.callDate || b.createdAt || 0;
+      if (sortBy === 'oldest') return new Date(ak) - new Date(bk);
+      return new Date(bk) - new Date(ak);
+    };
+
+    const salesSorter = (a, b) => {
+      if (sortBy === 'alpha' || sortBy === 'alpha-desc') {
+        return (sortBy === 'alpha')
+          ? (a.leadName || '').localeCompare(b.leadName || '')
+          : (b.leadName || '').localeCompare(a.leadName || '');
+      }
+      // Reuse "calls" sort key as "Highest Amount" in Sales view UI
+      if (sortBy === 'calls') return (b.amount || 0) - (a.amount || 0);
+      if (sortBy === 'oldest') return new Date(a.saleDate) - new Date(b.saleDate);
+      return new Date(b.saleDate) - new Date(a.saleDate);
+    };
+
+    const trashSorter = (a, b) => {
+      const ak = a.deletedAt || a.createdAt || 0;
+      const bk = b.deletedAt || b.createdAt || 0;
+      if (sortBy === 'oldest') return new Date(ak) - new Date(bk);
+      return new Date(bk) - new Date(ak);
+    };
+
+    const applyLeadPipeline = (arr) => arr.filter(matchesSearch).filter(matchesCommonFilters).sort(leadSorter);
+    const applyPlainPipeline = (arr, sorter) => arr.filter(matchesSearch).filter(matchesCommonFilters).sort(sorter);
+
+    switch (viewName) {
+      case 'leads': return applyLeadPipeline(leads);
+      case 'followups': return applyLeadPipeline(followUps);
+      case 'dnc': return applyLeadPipeline(dncList);
+      case 'dead': return applyLeadPipeline(deadLeads);
+      case 'converted':
+        return convertedLeads
+          .filter(matchesSearch)
+          .filter(matchesCommonFilters)
+          .sort((a, b) => {
+            if (sortBy === 'oldest') return new Date(a.convertedAt) - new Date(b.convertedAt);
+            if (sortBy === 'alpha' || sortBy === 'alpha-desc') {
+              return (sortBy === 'alpha')
+                ? (a.businessName || '').localeCompare(b.businessName || '')
+                : (b.businessName || '').localeCompare(a.businessName || '');
+            }
+            return new Date(b.convertedAt) - new Date(a.convertedAt);
+          });
+      case 'calllog': return applyPlainPipeline(callLog.slice(0, 1000), callSorter).slice(0, 100);
+      case 'sales': return applyPlainPipeline(sales, salesSorter);
+      case 'trash': return applyPlainPipeline(trash, trashSorter);
+      case 'emails':
+        return emails.filter(matchesSearch);
+      case 'golfcourses':
+        return golfCourses.filter(gc => !q || (gc.name || '').toLowerCase().includes(q));
+      default: return [];
+    }
+  }, [leads, followUps, dncList, deadLeads, convertedLeads, emails, callLog, trash, golfCourses, sales, searchQuery, sortBy, filters]);
+
+  const getCurrentList = useCallback(() => getListForView(view), [getListForView, view]);
+
+
   // Analytics
   const analytics = useMemo(() => {
     const now = new Date();
@@ -461,9 +378,8 @@ export function CRMProvider({ children }) {
 
   return (
     <CRMContext.Provider value={{
-      users, currentUserId, currentUser, addUser, updateUser, deleteUser, setCurrentUser,
       leads, dncList, deadLeads, convertedLeads, trash, emails, callLog, dailyStats, golfCourses, sales, settings, setSettings,
-      view, setView, selectedIndex, setSelectedIndex, notification, searchQuery, setSearchQuery, analyticsRange, setAnalyticsRange, sortBy, setSortBy, filters, updateFilters, clearFilters, session, startSession, stopSession, sessionNext,
+      view, setView, selectedIndex, setSelectedIndex, notification, searchQuery, setSearchQuery, analyticsRange, setAnalyticsRange, sortBy, setSortBy, filters, updateFilters, clearFilters,
       modals, openModal, closeModal, closeAllModals,
       todaysCalls, progress, hotLeads, activeGolfCourse, followUps, overdueCount, analytics, todaysSales, weekSales,
       notify, tallyCall, quickLogEmail, addLead, updateLead, moveToDNC, moveToDead, restoreFromDNC, restoreFromDead, 
@@ -476,9 +392,4 @@ export function CRMProvider({ children }) {
   );
 }
 
-
-export const useCRM = () => {
-  const ctx = useContext(CRMContext);
-  if (!ctx) throw new Error('useCRM must be within CRMProvider');
-  return ctx;
-};
+export const useCRM = () => { const ctx = useContext(CRMContext); if (!ctx) throw new Error('useCRM must be within CRMProvider'); return ctx; };

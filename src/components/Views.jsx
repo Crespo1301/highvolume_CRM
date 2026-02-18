@@ -66,6 +66,17 @@ function Pill({ label }) {
 export function Dashboard() {
   const { todaysCalls, settings, progress, leads, hotLeads, followUps, analytics, tallyCall, setView, openModal, activeGolfCourse, todaysSales, weekSales, convertedLeads } = useCRM();
 
+  const priorityCounts = React.useMemo(() => {
+    const counts = { hot: 0, normal: 0, low: 0 };
+    (leads || []).forEach(l => {
+      const p = (l.priority || 'normal');
+      if (p === 'hot') counts.hot += 1;
+      else if (p === 'low') counts.low += 1;
+      else counts.normal += 1;
+    });
+    return counts;
+  }, [leads]);
+
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
       <Card title=" Today" color={colors.success}>
@@ -88,8 +99,20 @@ export function Dashboard() {
 
       <Card title=" Leads" color={colors.primary}>
         <Stat label="Active" value={leads.length} />
-        <Stat label="Hot " value={hotLeads} color={colors.danger} />
-        <Stat label="Follow-ups" value={followUps.length} color={followUps.length > 0 ? colors.warning : colors.textMuted} />
+        <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+          <span style={{ padding: '6px 10px', borderRadius: 999, background: 'rgba(255,107,107,0.12)', border: `1px solid rgba(255,107,107,0.25)`, color: colors.danger, fontSize: 12, fontWeight: 650 }}>
+            Hot: {priorityCounts.hot}
+          </span>
+          <span style={{ padding: '6px 10px', borderRadius: 999, background: 'rgba(77,171,247,0.10)', border: `1px solid rgba(77,171,247,0.20)`, color: colors.accent, fontSize: 12, fontWeight: 650 }}>
+            Normal: {priorityCounts.normal}
+          </span>
+          <span style={{ padding: '6px 10px', borderRadius: 999, background: 'rgba(160,174,192,0.12)', border: `1px solid rgba(160,174,192,0.22)`, color: colors.textMuted, fontSize: 12, fontWeight: 650 }}>
+            Low: {priorityCounts.low}
+          </span>
+        </div>
+        <div style={{ marginTop: 10 }}>
+          <Stat label="Follow-ups" value={followUps.length} color={followUps.length > 0 ? colors.warning : colors.textMuted} />
+        </div>
       </Card>
 
       <Card title=" Quick Actions" color={colors.primary}>

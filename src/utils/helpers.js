@@ -80,21 +80,28 @@ export const DEFAULT_SETTINGS = {
 
 // Industry categories
 export const INDUSTRIES = [
+  'Golf Course / Country Club',
   'Restaurant',
-  'Bar / Nightclub',
-  'Auto Detail Service',
-  'Law Firm',
-  'Realtor / Real Estate',
+  'Bar / Nightlife',
+  'Hotel / Hospitality',
+  'Event Venue / Wedding',
+  'Real Estate',
+  'Insurance',
+  'Legal Services',
+  'Dental',
   'Medical / Healthcare',
-  'Dental Office',
+  'Chiropractic / Physical Therapy',
   'Fitness / Gym',
   'Salon / Spa',
-  'Retail Store',
-  'Professional Services',
+  'Auto Dealership',
+  'Auto Service / Repair',
+  'Home Services (HVAC/Plumbing/Electrical)',
+  'Roofing / Solar',
+  'Landscaping',
   'Construction / Trades',
-  'Financial Services',
-  'Insurance',
-  'Tech / Software',
+  'Marketing / Agency',
+  'IT / Software / SaaS',
+  'Retail',
   'Other'
 ];
 

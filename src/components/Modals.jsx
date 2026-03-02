@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useCRM } from '../context/CRMContext';
 import { colors, buttonBase, inputBase } from '../utils/theme.jsx';
-import { formatDate, formatFollowUpDisplay, formatDateTime, formatDateForInput, formatDateDisplay, isOverdue, generateId, INDUSTRIES, SOURCES, parseDateInput, SALE_TYPES } from '../utils/helpers';
+import { formatDate, formatDateTime, formatFollowUpDisplay, formatDateForInput, formatDateDisplay, isOverdue, generateId, INDUSTRIES, SOURCES, parseDateInput, SALE_TYPES } from '../utils/helpers';
 import { IconX } from './Icons';
 
 const Modal = ({ children, onClose }) => (
@@ -22,11 +22,60 @@ const DateInput = ({ value, onChange, label }) => {
   return (
     <div>
       <label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>{label}</label>
-      <div onClick={() => inputRef.current?.showPicker?.() || inputRef.current?.focus()} style={{ ...inputBase, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div
+        onClick={() => inputRef.current?.showPicker?.() || inputRef.current?.focus()}
+        style={{ ...inputBase, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+      >
         <span style={{ color: displayValue ? colors.text : colors.textDim }}>{displayValue || 'Click to select'}</span>
         <span style={{ color: colors.textDim }}></span>
-        <input ref={inputRef} type="date" value={formatDateForInput(value)} onChange={e => onChange(parseDateInput(e.target.value))} style={{ position: 'absolute', opacity: 0, width: 0, height: 0, pointerEvents: 'none' }} />
+        <input
+          ref={inputRef}
+          type="date"
+          value={formatDateForInput(value)}
+          onChange={e => {
+            const nextDate = e.target.value; // YYYY-MM-DD
+            const hasExplicitTime = value && /T\d\d:\d\d/.test(value) && !/T12:00:00/.test(value);
+            const timePart = hasExplicitTime ? value.split('T')[1].slice(0, 5) : '';
+            onChange(timePart ? `${nextDate}T${timePart}:00` : parseDateInput(nextDate));
+          }}
+          style={{ position: 'absolute', opacity: 0, width: 0, height: 0, pointerEvents: 'none' }}
+        />
       </div>
+    </div>
+  );
+};
+
+const TimeInput = ({ value, onChange, label }) => {
+  const today = new Date();
+  const yyyy = today.getFullYear();
+  const mm = String(today.getMonth() + 1).padStart(2, '0');
+  const dd = String(today.getDate()).padStart(2, '0');
+  const defaultDate = `${yyyy}-${mm}-${dd}`;
+
+  const datePart = formatDateForInput(value) || '';
+  const timeValue = (() => {
+    if (!value) return '';
+    const m = value.match(/T(\d\d:\d\d)/);
+    if (!m) return '';
+    // If follow-up was stored via parseDateInput (noon stamp), treat it as "no time selected".
+    if (/T12:00:00/.test(value)) return '';
+    return m[1];
+  })();
+
+  return (
+    <div>
+      <label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>{label}</label>
+      <input
+        type="time"
+        value={timeValue}
+        onChange={e => {
+          const t = e.target.value; // HH:MM or ''
+          const d = datePart || defaultDate;
+          if (!t) return onChange(parseDateInput(d));
+          onChange(`${d}T${t}:00`);
+        }}
+        style={inputBase}
+      />
     </div>
   );
 };
@@ -244,7 +293,10 @@ export function LeadDetailModal() {
 
   const setFollowUp = (days) => {
     const d = new Date(); d.setDate(d.getDate() + days);
-    updateLead({ ...lead, followUp: `${d.toISOString().split('T')[0]}T12:00:00` });
+    const keepTime = lead.followUp && /T\d\d:\d\d/.test(lead.followUp) && !/T12:00:00/.test(lead.followUp)
+      ? lead.followUp.split('T')[1].slice(0, 5)
+      : '';
+    updateLead({ ...lead, followUp: keepTime ? `${d.toISOString().split('T')[0]}T${keepTime}:00` : `${d.toISOString().split('T')[0]}T12:00:00` });
   };
 
   if (showConvert) {
@@ -400,7 +452,8 @@ export function EditLeadModal() {
               {SOURCES.map(src => <option key={src} value={src}>{src}</option>)}
             </select>
           </div>
-          <DateInput value={form.followUp} onChange={val => setForm(f => ({ ...f, followUp: val }))} label="Follow-up" />
+          <DateInput value={form.followUp} onChange={val => setForm(f => ({ ...f, followUp: val }))} label="Callback date" />
+          <TimeInput value={form.followUp} onChange={val => setForm(f => ({ ...f, followUp: val }))} label="Callback time" />
           <div>
             <label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>Priority</label>
             <select value={form.priority || 'normal'} onChange={e => setForm(f => ({ ...f, priority: e.target.value }))} style={inputBase}>

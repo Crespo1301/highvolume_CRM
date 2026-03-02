@@ -23,9 +23,9 @@ export function Header() {
             )}
           </h1>
           <p style={{ color: colors.textDim, fontSize: 12 }}>
-            Press <span style={{ background: colors.bgCard, padding: '2px 6px', borderRadius: 4, fontFamily: 'monospace' }}>/</span> for shortcuts •
+            Press <span style={{ background: colors.bgCard, padding: '2px 6px', borderRadius: 4, fontFamily: 'monospace' }}>/</span> for shortcuts (/? also works) •
             <span style={{ marginLeft: 8, fontFamily: 'monospace', color: colors.textDim }}>N</span> next •
-            <span style={{ marginLeft: 8, fontFamily: 'monospace', color: colors.textDim }}>O</span> settings
+            <span style={{ marginLeft: 8, fontFamily: 'monospace', color: colors.textDim }}>S</span> settings
           </p>
         </div>
 

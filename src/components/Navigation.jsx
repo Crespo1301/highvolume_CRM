@@ -1,7 +1,7 @@
 import React from 'react';
 import { useCRM } from '../context/CRMContext';
 import { colors, buttonBase } from '../utils/theme.jsx';
-import { IconTarget, IconCalendar, IconCheck, IconBan, IconSkull, IconPhone, IconGolf, IconSort, IconFilter } from './Icons';
+import { IconTarget, IconCalendar, IconCheck, IconBan, IconSkull, IconPhone, IconGolf } from './Icons';
 
 export function Navigation() {
   const { view, setView, setSelectedIndex, leads, dncList, deadLeads, convertedLeads, callLog, golfCourses, trash, emails, followUps, overdueCount, sales } = useCRM();

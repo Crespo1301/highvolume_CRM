@@ -72,6 +72,12 @@ export function Dashboard() {
         <Stat label="Calls" value={todaysCalls} color={colors.success} />
         <Stat label="Goal" value={settings.dailyGoal} />
         <Stat label="Progress" value={`${progress.toFixed(0)}%`} color={progress >= 100 ? colors.warning : colors.success} />
+        <button
+          onClick={() => openModal('settings', true)}
+          style={{ marginTop: 10, background: 'transparent', border: 'none', color: colors.primary, fontSize: 12, cursor: 'pointer', padding: 0, textAlign: 'left' }}
+        >
+          Edit daily goals
+        </button>
       </Card>
 
       <Card title=" Sales Today" color={colors.warning} borderColor={todaysSales.count >= settings.dailySalesGoal ? colors.success : colors.border}>

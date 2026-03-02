@@ -50,7 +50,6 @@ export function useKeyboard() {
           e.preventDefault();
           openModal('settings', true);
           break;
-          break;
         case ' ': case '0': 
           e.preventDefault(); 
           tallyCall(['leads', 'followups'].includes(view) && list[selectedIndex] ? list[selectedIndex] : null); 
@@ -111,7 +110,6 @@ export function useKeyboard() {
         case '/': case '?': e.preventDefault(); openModal('help', !modals.help); break;
         case 'i': e.preventDefault(); openModal('import'); break;
         case 'x': e.preventDefault(); openModal('export'); break;
-        case 's': e.preventDefault(); openModal('settings'); break;
         default: 
           if (key.match(/^[h-oq-ru-wyz]$/) && ['leads', 'followups', 'dnc', 'dead'].includes(view)) { 
             setSearchQuery(q => q + key); 

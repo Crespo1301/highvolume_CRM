@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useCRM } from '../context/CRMContext';
 import { colors, buttonBase, inputBase } from '../utils/theme.jsx';
-import { formatDate, formatDateTime, formatFollowUpDisplay, formatDateForInput, formatDateDisplay, isOverdue, generateId, INDUSTRIES, SOURCES, parseDateInput, SALE_TYPES } from '../utils/helpers';
+import { formatDate, formatFollowUpDisplay, formatDateTime, formatDateForInput, formatDateDisplay, isOverdue, generateId, INDUSTRIES, SOURCES, parseDateInput, SALE_TYPES } from '../utils/helpers';
 import { IconX } from './Icons';
 
 const Modal = ({ children, onClose }) => (
@@ -22,60 +22,11 @@ const DateInput = ({ value, onChange, label }) => {
   return (
     <div>
       <label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>{label}</label>
-      <div
-        onClick={() => inputRef.current?.showPicker?.() || inputRef.current?.focus()}
-        style={{ ...inputBase, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
-      >
+      <div onClick={() => inputRef.current?.showPicker?.() || inputRef.current?.focus()} style={{ ...inputBase, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <span style={{ color: displayValue ? colors.text : colors.textDim }}>{displayValue || 'Click to select'}</span>
         <span style={{ color: colors.textDim }}></span>
-        <input
-          ref={inputRef}
-          type="date"
-          value={formatDateForInput(value)}
-          onChange={e => {
-            const nextDate = e.target.value; // YYYY-MM-DD
-            const hasExplicitTime = value && /T\d\d:\d\d/.test(value) && !/T12:00:00/.test(value);
-            const timePart = hasExplicitTime ? value.split('T')[1].slice(0, 5) : '';
-            onChange(timePart ? `${nextDate}T${timePart}:00` : parseDateInput(nextDate));
-          }}
-          style={{ position: 'absolute', opacity: 0, width: 0, height: 0, pointerEvents: 'none' }}
-        />
+        <input ref={inputRef} type="date" value={formatDateForInput(value)} onChange={e => onChange(parseDateInput(e.target.value))} style={{ position: 'absolute', opacity: 0, width: 0, height: 0, pointerEvents: 'none' }} />
       </div>
-    </div>
-  );
-};
-
-const TimeInput = ({ value, onChange, label }) => {
-  const today = new Date();
-  const yyyy = today.getFullYear();
-  const mm = String(today.getMonth() + 1).padStart(2, '0');
-  const dd = String(today.getDate()).padStart(2, '0');
-  const defaultDate = `${yyyy}-${mm}-${dd}`;
-
-  const datePart = formatDateForInput(value) || '';
-  const timeValue = (() => {
-    if (!value) return '';
-    const m = value.match(/T(\d\d:\d\d)/);
-    if (!m) return '';
-    // If follow-up was stored via parseDateInput (noon stamp), treat it as "no time selected".
-    if (/T12:00:00/.test(value)) return '';
-    return m[1];
-  })();
-
-  return (
-    <div>
-      <label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>{label}</label>
-      <input
-        type="time"
-        value={timeValue}
-        onChange={e => {
-          const t = e.target.value; // HH:MM or ''
-          const d = datePart || defaultDate;
-          if (!t) return onChange(parseDateInput(d));
-          onChange(`${d}T${t}:00`);
-        }}
-        style={inputBase}
-      />
     </div>
   );
 };
@@ -293,10 +244,7 @@ export function LeadDetailModal() {
 
   const setFollowUp = (days) => {
     const d = new Date(); d.setDate(d.getDate() + days);
-    const keepTime = lead.followUp && /T\d\d:\d\d/.test(lead.followUp) && !/T12:00:00/.test(lead.followUp)
-      ? lead.followUp.split('T')[1].slice(0, 5)
-      : '';
-    updateLead({ ...lead, followUp: keepTime ? `${d.toISOString().split('T')[0]}T${keepTime}:00` : `${d.toISOString().split('T')[0]}T12:00:00` });
+    updateLead({ ...lead, followUp: `${d.toISOString().split('T')[0]}T12:00:00` });
   };
 
   if (showConvert) {
@@ -421,15 +369,35 @@ export function LeadDetailModal() {
 export function EditLeadModal() {
   const { modals, closeModal, updateLead, golfCourses } = useCRM();
   const [form, setForm] = useState(null);
-  React.useEffect(() => { if (modals.editLead) setForm({ ...modals.editLead }); }, [modals.editLead]);
-  if (!form) return null;
+  const extractTime = (followUp) => {
+    if (!followUp) return '';
+    const t = String(followUp).split('T')[1] || '';
+    const hm = t.slice(0,5);
+    // Treat stored default noon as "no time" (date-only)
+    if (hm === '12:00') return '';
+    if (hm === '00:00') return '';
+    return hm;
+  };
+  const combineFollowUp = (dateStr, timeStr) => {
+    if (!dateStr) return '';
+    if (!timeStr) return `${dateStr}T12:00:00`;
+    const clean = timeStr.length === 5 ? `${timeStr}:00` : timeStr;
+    return `${dateStr}T${clean}`;
+  };
+  React.useEffect(() => {
+    if (!modals.editLead) { setForm(null); return; }
+    setForm({ ...modals.editLead, followUpTime: extractTime(modals.editLead.followUp) });
+  }, [modals.editLead]);
+  if (!modals.editLead || !form) return null;
+
+  const onClose = () => { setForm(null); closeModal('editLead'); };
 
   return (
-    <Modal onClose={() => closeModal('editLead')}>
+    <Modal onClose={onClose}>
       <ModalBox maxWidth={700}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
           <h2 style={{ color: colors.text, fontSize: 18 }}>✏️ Edit Lead</h2>
-          <button onClick={() => closeModal('editLead')} style={{ ...buttonBase, background: colors.bgCard, color: colors.textMuted }}><IconX size={16} /></button>
+          <button onClick={onClose} style={{ ...buttonBase, background: colors.bgCard, color: colors.textMuted }}><IconX size={16} /></button>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
           {[['businessName', 'Business Name', 2], ['contactName', 'Contact', 1], ['phone', 'Phone', 1], ['email', 'Email', 1], ['website', 'Website', 1], ['address', 'Address', 2]].map(([key, label, span]) => (
@@ -452,8 +420,24 @@ export function EditLeadModal() {
               {SOURCES.map(src => <option key={src} value={src}>{src}</option>)}
             </select>
           </div>
-          <DateInput value={form.followUp} onChange={val => setForm(f => ({ ...f, followUp: val }))} label="Callback date" />
-          <TimeInput value={form.followUp} onChange={val => setForm(f => ({ ...f, followUp: val }))} label="Callback time" />
+          <DateInput value={form.followUp} onChange={val => {
+            const dateStr = val ? String(val).slice(0, 10) : '';
+            setForm(f => {
+              if (!dateStr) return { ...f, followUp: '', followUpTime: '' };
+              return { ...f, followUp: combineFollowUp(dateStr, f.followUpTime) };
+            });
+          }} label="Follow-up" />
+          <div>
+            <label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>Callback Time</label>
+            <input type="time" value={form.followUpTime || ''} onChange={e => {
+              const time = e.target.value;
+              setForm(f => {
+                const dateStr = f.followUp ? String(f.followUp).slice(0, 10) : '';
+                if (!dateStr) return { ...f, followUpTime: time };
+                return { ...f, followUpTime: time, followUp: combineFollowUp(dateStr, time) };
+              });
+            }} style={inputBase} />
+          </div>
           <div>
             <label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>Priority</label>
             <select value={form.priority || 'normal'} onChange={e => setForm(f => ({ ...f, priority: e.target.value }))} style={inputBase}>
@@ -475,8 +459,11 @@ export function EditLeadModal() {
           </div>
         </div>
         <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
-          <button onClick={() => updateLead(form)} style={{ ...buttonBase, flex: 1, background: colors.success, color: '#fff' }}>Save</button>
-          <button onClick={() => closeModal('editLead')} style={{ ...buttonBase, background: colors.bgCard, color: colors.text }}>Cancel</button>
+          <button onClick={() => {
+            const { followUpTime, ...payload } = form;
+            updateLead(payload);
+          }} style={{ ...buttonBase, flex: 1, background: colors.success, color: '#fff' }}>Save</button>
+          <button onClick={onClose} style={{ ...buttonBase, background: colors.bgCard, color: colors.text }}>Cancel</button>
         </div>
       </ModalBox>
     </Modal>
@@ -487,7 +474,7 @@ export function EditCallModal() {
   const { modals, closeModal, updateCall, deleteCall } = useCRM();
   const [form, setForm] = useState(null);
   React.useEffect(() => { if (modals.editCall) setForm({ ...modals.editCall }); }, [modals.editCall]);
-  if (!form) return null;
+  if (!modals.editLead || !form) return null;
   return (
     <Modal onClose={() => closeModal('editCall')}>
       <ModalBox maxWidth={500}>
@@ -520,7 +507,7 @@ export function EditGolfCourseModal() {
   const { modals, closeModal, updateGolfCourse, deleteGolfCourse } = useCRM();
   const [form, setForm] = useState(null);
   React.useEffect(() => { if (modals.editGolfCourse) setForm({ ...modals.editGolfCourse }); }, [modals.editGolfCourse]);
-  if (!form) return null;
+  if (!modals.editLead || !form) return null;
   return (
     <Modal onClose={() => closeModal('editGolfCourse')}>
       <ModalBox maxWidth={550}>

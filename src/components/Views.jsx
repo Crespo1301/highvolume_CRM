@@ -72,12 +72,6 @@ export function Dashboard() {
         <Stat label="Calls" value={todaysCalls} color={colors.success} />
         <Stat label="Goal" value={settings.dailyGoal} />
         <Stat label="Progress" value={`${progress.toFixed(0)}%`} color={progress >= 100 ? colors.warning : colors.success} />
-        <button
-          onClick={() => openModal('settings', true)}
-          style={{ marginTop: 10, background: 'transparent', border: 'none', color: colors.primary, fontSize: 12, cursor: 'pointer', padding: 0, textAlign: 'left' }}
-        >
-          Edit daily goals
-        </button>
       </Card>
 
       <Card title=" Sales Today" color={colors.warning} borderColor={todaysSales.count >= settings.dailySalesGoal ? colors.success : colors.border}>
@@ -644,10 +638,14 @@ export function AddLeadForm() {
     priority: 'normal', 
     source: 'Google Maps',
     followUp: '', 
+    followUpTime: '', 
     golfCourseId: settings.activeGolfCourse || ''
   });
 
-  const handleSubmit = () => { if (addLead(form)) { setView('leads'); } };
+  const handleSubmit = () => {
+    const { followUpTime, ...payload } = form;
+    if (addLead(payload)) { setView('leads'); }
+  };
 
   return (
     <div style={{ background: colors.bgCard, borderRadius: 12, border: `1px solid ${colors.warning}`, padding: 28, maxWidth: 700, margin: '0 auto' }}>
@@ -700,9 +698,28 @@ export function AddLeadForm() {
         
         <DateInput 
           value={form.followUp} 
-          onChange={val => setForm(f => ({ ...f, followUp: val }))} 
+          onChange={val => {
+            const dateStr = val ? String(val).slice(0, 10) : '';
+            setForm(f => {
+              if (!dateStr) return { ...f, followUp: '', followUpTime: '' };
+              const followUp = f.followUpTime ? `${dateStr}T${f.followUpTime}:00` : `${dateStr}T12:00:00`;
+              return { ...f, followUp };
+            });
+          }} 
           label="Follow-up Date"
         />
+
+        <div>
+          <label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>Callback Time</label>
+          <input type="time" value={form.followUpTime || ''} onChange={e => {
+            const time = e.target.value;
+            setForm(f => {
+              const dateStr = f.followUp ? String(f.followUp).slice(0, 10) : '';
+              if (!dateStr) return { ...f, followUpTime: time };
+              return { ...f, followUpTime: time, followUp: `${dateStr}T${time}:00` };
+            });
+          }} style={inputBase} />
+        </div>
         
         <div style={{ gridColumn: 'span 2' }}>
           <label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>Notes</label>

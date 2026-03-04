@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useCRM } from '../context/CRMContext';
 import { colors, buttonBase, inputBase } from '../utils/theme.jsx';
-import { formatDate, formatDateTime, formatFollowUpDisplay, formatDateForInput, formatDateDisplay, isOverdue, INDUSTRIES, SOURCES, parseDateInput, SORT_OPTIONS, SALE_TYPES } from '../utils/helpers';
+import { formatDate, formatDateTime, formatFollowUpDisplay, formatDateForInput, formatDateDisplay, isOverdue, followUpStatus, INDUSTRIES, SOURCES, parseDateInput, SORT_OPTIONS, SALE_TYPES } from '../utils/helpers';
 import { IconPlay, IconStop, IconChevronRight, IconPhone, IconCalendar, IconCheck, IconBan, IconSkull, IconFlag } from './Icons';
 
 // Card component
@@ -117,9 +117,9 @@ export function Dashboard() {
       {followUps.length > 0 && (
         <Card title=" Follow-ups Due" color={colors.warning} borderColor={colors.warning}>
           {followUps.slice(0, 4).map(l => (
-            <div key={l.id} onClick={() => openModal('leadDetail', l)} style={{ padding: 12, background: colors.bgLight, borderRadius: 8, marginBottom: 8, cursor: 'pointer', borderLeft: `3px solid ${isOverdue(l.followUp) ? colors.danger : colors.warning}` }}>
+            <div key={l.id} onClick={() => openModal('leadDetail', l)} style={{ padding: 12, background: colors.bgLight, borderRadius: 8, marginBottom: 8, cursor: 'pointer', borderLeft: `3px solid ${followUpStatus(l.followUp) === 'overdue' ? colors.danger : followUpStatus(l.followUp) === 'due' ? colors.warning : colors.textDim}` }}>
               <div style={{ fontWeight: '600', fontSize: 13 }}>{l.businessName}</div>
-              <div style={{ color: isOverdue(l.followUp) ? colors.danger : colors.textMuted, fontSize: 11 }}>{formatFollowUpDisplay(l.followUp)} {isOverdue(l.followUp) && '(OVERDUE)'}</div>
+              <div style={{ color: followUpStatus(l.followUp) === 'overdue' ? colors.danger : followUpStatus(l.followUp) === 'due' ? colors.warning : colors.textMuted, fontSize: 11 }}>{formatFollowUpDisplay(l.followUp)} {followUpStatus(l.followUp) === 'overdue' ? '(OVERDUE)' : followUpStatus(l.followUp) === 'due' ? '(DUE TODAY)' : ''}</div>
             </div>
           ))}
           {followUps.length > 4 && <button onClick={() => setView('followups')} style={{ ...buttonBase, width: '100%', background: 'transparent', color: colors.warning, border: `1px solid ${colors.border}`, fontSize: 12 }}>View all {followUps.length} →</button>}
@@ -364,7 +364,8 @@ export function ListView({ type }) {
     dead: 'Enter to restore',
     converted: 'Enter to unconvert',
     calllog: 'Enter to edit',
-    trash: 'Enter to restore'
+    trash: 'Enter to restore',
+    sales: 'Enter to edit'
   };
 
   return (
@@ -479,7 +480,7 @@ export function ListView({ type }) {
               setSelectedIndex(idx);
               if (type === 'calllog') openModal('editCall', item);
               else if (type === 'trash') restoreFromTrash(item);
-              else if (type === 'sales') { /* just select */ }
+              else if (type === 'sales') openModal('editSale', item);
               else if (type !== 'emails' && type !== 'dnc' && type !== 'dead' && type !== 'converted') openModal('leadDetail', item);
             }} 
             style={{ 
@@ -564,7 +565,7 @@ export function ListView({ type }) {
                   )}
                   <div style={{ textAlign: 'right' }}>
                     {['leads', 'followups'].includes(type) && <div style={{ color: colors.success, fontSize: 13, fontWeight: '600' }}>{item.callCount || 0} calls</div>}
-                    {item.followUp && <div style={{ color: isOverdue(item.followUp) ? colors.danger : colors.textDim, fontSize: 11 }}> {formatFollowUpDisplay(item.followUp)}</div>}
+                    {item.followUp && <div style={{ color: followUpStatus(item.followUp) === 'overdue' ? colors.danger : followUpStatus(item.followUp) === 'due' ? colors.warning : colors.textDim, fontSize: 11 }}> {formatFollowUpDisplay(item.followUp)}{followUpStatus(item.followUp) === 'due' ? ' (DUE)' : ''}</div>}
                   </div>
                 </div>
               </div>
@@ -638,14 +639,10 @@ export function AddLeadForm() {
     priority: 'normal', 
     source: 'Google Maps',
     followUp: '', 
-    followUpTime: '', 
     golfCourseId: settings.activeGolfCourse || ''
   });
 
-  const handleSubmit = () => {
-    const { followUpTime, ...payload } = form;
-    if (addLead(payload)) { setView('leads'); }
-  };
+  const handleSubmit = () => { if (addLead(form)) { setView('leads'); } };
 
   return (
     <div style={{ background: colors.bgCard, borderRadius: 12, border: `1px solid ${colors.warning}`, padding: 28, maxWidth: 700, margin: '0 auto' }}>
@@ -698,28 +695,9 @@ export function AddLeadForm() {
         
         <DateInput 
           value={form.followUp} 
-          onChange={val => {
-            const dateStr = val ? String(val).slice(0, 10) : '';
-            setForm(f => {
-              if (!dateStr) return { ...f, followUp: '', followUpTime: '' };
-              const followUp = f.followUpTime ? `${dateStr}T${f.followUpTime}:00` : `${dateStr}T12:00:00`;
-              return { ...f, followUp };
-            });
-          }} 
+          onChange={val => setForm(f => ({ ...f, followUp: val }))} 
           label="Follow-up Date"
         />
-
-        <div>
-          <label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>Callback Time</label>
-          <input type="time" value={form.followUpTime || ''} onChange={e => {
-            const time = e.target.value;
-            setForm(f => {
-              const dateStr = f.followUp ? String(f.followUp).slice(0, 10) : '';
-              if (!dateStr) return { ...f, followUpTime: time };
-              return { ...f, followUpTime: time, followUp: `${dateStr}T${time}:00` };
-            });
-          }} style={inputBase} />
-        </div>
         
         <div style={{ gridColumn: 'span 2' }}>
           <label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>Notes</label>

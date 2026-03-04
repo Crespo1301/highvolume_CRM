@@ -34,17 +34,18 @@ export const generateId = () => Date.now().toString(36) + Math.random().toString
 export const formatDate = (dateStr) => dateStr ? new Date(dateStr).toLocaleDateString() : '';
 export const formatDateTime = (dateStr) => dateStr ? new Date(dateStr).toLocaleString() : '';
 
-// Follow-up / callback display: includes time only when it's meaningful (not the default noon stamp).
+// Follow-up / callback display: show time only when it's meaningful (not default noon/midnight).
 export const formatFollowUpDisplay = (dateStr) => {
   if (!dateStr) return '';
   const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return String(dateStr);
+  const isDefaultNoon = d.getHours() === 12 && d.getMinutes() === 0 && /T12:00:00/.test(String(dateStr));
+  const isMidnight = d.getHours() === 0 && d.getMinutes() === 0;
   const datePart = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
-  // Treat stored noon (from parseDateInput) as "date-only" to keep UI clean.
-  if (/T12:00:00/.test(dateStr) || (/T00:00:00/.test(dateStr) && d.getMinutes() === 0)) return datePart;
+  if (isDefaultNoon || isMidnight) return datePart;
   const timePart = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
   return `${datePart} • ${timePart}`;
 };
-
 
 // Fix timezone issue - use local date parts instead of UTC
 export const formatDateForInput = (dateStr) => {
@@ -76,6 +77,21 @@ export const isOverdue = (dateStr) => {
   d.setHours(23, 59, 59);
   return d < new Date();
 };
+
+export const isDueToday = (dateStr) => {
+  if (!dateStr) return false;
+  const d = new Date(dateStr);
+  const now = new Date();
+  return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+};
+
+export const followUpStatus = (dateStr) => {
+  if (!dateStr) return 'none';
+  if (isDueToday(dateStr)) return 'due';
+  if (isOverdue(dateStr)) return 'overdue';
+  return 'upcoming';
+};
+
 
 export const isTodayOrPast = (dateStr) => {
   if (!dateStr) return false;

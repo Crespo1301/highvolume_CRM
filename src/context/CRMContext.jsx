@@ -30,12 +30,12 @@ export function CRMProvider({ children }) {
   // Modal state
   const [modals, setModals] = useState({
     help: false, import: false, export: false, settings: false, privacy: false, terms: false,
-    leadDetail: null, editLead: null, editCall: null, editGolfCourse: null, recordSale: null
+    leadDetail: null, editLead: null, editCall: null, editGolfCourse: null, recordSale: null, editSale: null
   });
 
   const openModal = (key, value = true) => setModals(m => ({ ...m, [key]: value }));
   const closeModal = (key) => setModals(m => ({ ...m, [key]: key.includes('edit') || key.includes('Detail') || key === 'recordSale' ? null : false }));
-  const closeAllModals = () => setModals({ help: false, import: false, export: false, settings: false, privacy: false, terms: false, leadDetail: null, editLead: null, editCall: null, editGolfCourse: null, recordSale: null });
+  const closeAllModals = () => setModals({ help: false, import: false, export: false, settings: false, privacy: false, terms: false, leadDetail: null, editLead: null, editCall: null, editGolfCourse: null, recordSale: null, editSale: null });
 
   // Persist data
   useEffect(() => { saveData(STORAGE_KEYS.leads, leads); }, [leads]);
@@ -106,166 +106,7 @@ export function CRMProvider({ children }) {
     notify(`Call tallied! Today: ${(dailyStats[today] || 0) + 1}`);
   }, [dailyStats, notify, settings.activeGolfCourse]);
 
-  const persistSession = useCallback((next) => saveData(STORAGE_KEYS.session, next), []);
-
-  const startSession = useCallback((targetView = view) => {
-    const list = getListForView(targetView);
-    const current = (targetView === view && list[selectedIndex]) ? list[selectedIndex] : list[0];
-    const next = { active: true, view: targetView, leadId: current?.id || null };
-    setSession(next);
-    persistSession(next);
-    setView(targetView);
-    setSelectedIndex(Math.max(0, list.findIndex(l => l.id === next.leadId)));
-    notify('Session started');
-  }, [getListForView, notify, persistSession, selectedIndex, setSelectedIndex, setView, view]);
-
-  const stopSession = useCallback(() => {
-    const next = { active: false, view: session.view || 'leads', leadId: null };
-    setSession(next);
-    persistSession(next);
-    notify('Session stopped');
-  }, [notify, persistSession, session.view]);
-
-  const sessionNext = useCallback(() => {
-    const list = getListForView(session.view || view);
-    if (!list.length) { notify('No records in this view'); return; }
-    const idx = session.leadId ? list.findIndex(l => l.id === session.leadId) : -1;
-    const nextIdx = Math.min(idx + 1, list.length - 1);
-    const nextLead = list[nextIdx];
-    const next = { ...session, active: true, view: session.view || view, leadId: nextLead?.id || null };
-    setSession(next);
-    persistSession(next);
-    setSelectedIndex(nextIdx);
-  }, [getListForView, notify, persistSession, session, setSelectedIndex, view]);
-
-  // Quick email log (just mark that we emailed them)
-  const quickLogEmail = useCallback((lead) => {
-    const now = new Date().toISOString();
-    setEmails(prev => [{ 
-      id: generateId(), 
-      leadId: lead.id, 
-      leadName: lead.businessName,
-      to: lead.email || '',
-      sentAt: now
-    }, ...prev]);
-    setLeads(prev => prev.map(l => l.id === lead.id ? { ...l, lastEmailed: now, emailCount: (l.emailCount || 0) + 1 } : l));
-    notify(` Email logged for ${lead.businessName}`);
-  }, [notify]);
-
-  // Lead actions
-  const addLead = useCallback((data) => {
-    if (!data.businessName && !data.phone) { notify('Name or phone required'); return false; }
-    setLeads(prev => [{ id: generateId(), ...data, createdAt: new Date().toISOString(), callCount: 0, callHistory: [], golfCourseId: data.golfCourseId || settings.activeGolfCourse }, ...prev]);
-    notify(`${data.businessName || 'Lead'} added`);
-    return true;
-  }, [notify, settings.activeGolfCourse]);
-
-  const updateLead = useCallback((lead) => { setLeads(prev => prev.map(l => l.id === lead.id ? lead : l)); openModal('leadDetail', lead); closeModal('editLead'); notify('Lead updated'); }, [notify]);
-  const moveToDNC = useCallback((lead) => { setLeads(prev => prev.filter(l => l.id !== lead.id)); setDncList(prev => [...prev, { ...lead, dncDate: new Date().toISOString() }]); notify(` ${lead.businessName} → DNC`); }, [notify]);
-  const moveToDead = useCallback((lead) => { setLeads(prev => prev.filter(l => l.id !== lead.id)); setDeadLeads(prev => [...prev, { ...lead, deadDate: new Date().toISOString() }]); notify(` ${lead.businessName} → Dead`); }, [notify]);
-  const restoreFromDNC = useCallback((lead) => { setDncList(prev => prev.filter(l => l.id !== lead.id)); setLeads(prev => [...prev, { ...lead, restoredAt: new Date().toISOString() }]); notify(` ${lead.businessName} restored`); }, [notify]);
-  const restoreFromDead = useCallback((lead) => { setDeadLeads(prev => prev.filter(l => l.id !== lead.id)); setLeads(prev => [...prev, { ...lead, restoredAt: new Date().toISOString() }]); notify(` ${lead.businessName} restored`); }, [notify]);
-  
-  // Convert lead (sale made!)
-  const convertLead = useCallback((lead, saleData = null) => {
-    setLeads(prev => prev.filter(l => l.id !== lead.id));
-    const convertedLead = { 
-      ...lead, 
-      convertedAt: new Date().toISOString(),
-      status: 'converted'
-    };
-    setConvertedLeads(prev => [convertedLead, ...prev]);
-    
-    // If sale data provided, record the sale
-    if (saleData) {
-      const sale = {
-        id: generateId(),
-        leadId: lead.id,
-        leadName: lead.businessName,
-        saleDate: new Date().toISOString(),
-        saleType: saleData.type,
-        amount: saleData.amount,
-        saleCount: saleData.saleCount || 1,
-        notes: saleData.notes || '',
-        golfCourseId: lead.golfCourseId
-      };
-      setSales(prev => [sale, ...prev]);
-      notify(` SALE! ${lead.businessName} - $${saleData.amount}!`);
-    } else {
-      notify(` ${lead.businessName} converted!`);
-    }
-  }, [notify]);
-
-  // Unconvert lead (sale fell through)
-  const unconvertLead = useCallback((lead) => {
-    setConvertedLeads(prev => prev.filter(l => l.id !== lead.id));
-    setLeads(prev => [...prev, { ...lead, status: 'active', unconvertedAt: new Date().toISOString() }]);
-    // Remove associated sale if exists
-    setSales(prev => prev.filter(s => s.leadId !== lead.id));
-    notify(`️ ${lead.businessName} moved back to leads`);
-  }, [notify]);
-
-  const deleteToTrash = useCallback((item, type) => {
-    if (type === 'lead') setLeads(prev => prev.filter(l => l.id !== item.id));
-    else if (type === 'dnc') setDncList(prev => prev.filter(l => l.id !== item.id));
-    else if (type === 'dead') setDeadLeads(prev => prev.filter(l => l.id !== item.id));
-    else if (type === 'converted') setConvertedLeads(prev => prev.filter(l => l.id !== item.id));
-    setTrash(prev => [...prev, { ...item, type, deletedAt: new Date().toISOString() }]);
-    closeModal('leadDetail');
-    notify('Moved to trash');
-  }, [notify]);
-
-  const restoreFromTrash = useCallback((item) => {
-    if (item.type === 'call') { setCallLog(prev => [item, ...prev]); setDailyStats(prev => ({ ...prev, [new Date(item.timestamp).toDateString()]: (prev[new Date(item.timestamp).toDateString()] || 0) + 1 })); }
-    else if (item.type === 'lead') setLeads(prev => [...prev, item]);
-    else if (item.type === 'dnc') setDncList(prev => [...prev, item]);
-    else if (item.type === 'dead') setDeadLeads(prev => [...prev, item]);
-    else if (item.type === 'converted') setConvertedLeads(prev => [...prev, item]);
-    setTrash(prev => prev.filter(t => !(t.id === item.id && t.type === item.type)));
-    notify('Restored from trash');
-  }, [notify]);
-
-  const emptyTrash = useCallback(() => { if (trash.length && confirm(`Delete ${trash.length} items permanently?`)) { setTrash([]); notify('Trash emptied'); } }, [trash, notify]);
-
-  // Call actions
-  const deleteCall = useCallback((callId) => {
-    const call = callLog.find(c => c.id === callId);
-    if (!call) return;
-    setTrash(prev => [...prev, { ...call, type: 'call', deletedAt: new Date().toISOString() }]);
-    setCallLog(prev => prev.filter(c => c.id !== callId));
-    setDailyStats(prev => ({ ...prev, [new Date(call.timestamp).toDateString()]: Math.max(0, (prev[new Date(call.timestamp).toDateString()] || 1) - 1) }));
-    if (call.leadId) setLeads(prev => prev.map(l => l.id === call.leadId ? { ...l, callCount: Math.max(0, (l.callCount || 1) - 1), callHistory: (l.callHistory || []).filter(h => h.id !== callId) } : l));
-    notify('Call deleted');
-  }, [callLog, notify]);
-
-  const updateCall = useCallback((call) => { setCallLog(prev => prev.map(c => c.id === call.id ? call : c)); closeModal('editCall'); notify('Call updated'); }, [notify]);
-
-  // Golf course actions
-  const addGolfCourse = useCallback((data) => { if (!data.name) { notify('Name required'); return false; } setGolfCourses(prev => [...prev, { id: generateId(), ...data, createdAt: new Date().toISOString() }]); notify(' Course added'); return true; }, [notify]);
-  const updateGolfCourse = useCallback((course) => { setGolfCourses(prev => prev.map(gc => gc.id === course.id ? course : gc)); closeModal('editGolfCourse'); notify('Course updated'); }, [notify]);
-  const deleteGolfCourse = useCallback((id) => { if (confirm('Delete course?')) { setGolfCourses(prev => prev.filter(gc => gc.id !== id)); if (settings.activeGolfCourse === id) setSettings(prev => ({ ...prev, activeGolfCourse: null })); notify('Course deleted'); } }, [settings.activeGolfCourse, notify]);
-
-  // Record a sale
-  const recordSale = useCallback((saleData) => {
-    const sale = {
-      id: generateId(),
-      leadId: saleData.leadId || null,
-      leadName: saleData.leadName || 'Walk-in',
-      saleDate: new Date().toISOString(),
-      saleType: saleData.type,
-      amount: saleData.amount,
-      saleCount: saleData.saleCount || 1,
-      notes: saleData.notes || '',
-      golfCourseId: settings.activeGolfCourse
-    };
-    setSales(prev => [sale, ...prev]);
-    notify(` SALE recorded! $${saleData.amount}`);
-    closeModal('recordSale');
-    return true;
-  }, [notify, settings.activeGolfCourse]);
-
-  // Get current list with sorting
-  function getListForView(viewName) {
+  const getListForView = useCallback((viewName) => {
     const q = (searchQuery || '').toLowerCase();
 
     const matchesSearch = (item) => {
@@ -376,9 +217,186 @@ export function CRMProvider({ children }) {
         return golfCourses.filter(gc => !q || (gc.name || '').toLowerCase().includes(q));
       default: return [];
     }
-  }
+  }, [leads, followUps, dncList, deadLeads, convertedLeads, emails, callLog, trash, golfCourses, sales, searchQuery, sortBy, filters]);
 
-const getCurrentList = useCallback(() => getListForView(view), [getListForView, view]);
+  const getCurrentList = useCallback(() => getListForView(view), [getListForView, view]);
+
+  const persistSession = useCallback((next) => saveData(STORAGE_KEYS.session, next), []);
+
+  const startSession = useCallback((targetView = view) => {
+    const list = getListForView(targetView);
+    const current = (targetView === view && list[selectedIndex]) ? list[selectedIndex] : list[0];
+    const next = { active: true, view: targetView, leadId: current?.id || null };
+    setSession(next);
+    persistSession(next);
+    setView(targetView);
+    setSelectedIndex(Math.max(0, list.findIndex(l => l.id === next.leadId)));
+    notify('Session started');
+  }, [getListForView, notify, persistSession, selectedIndex, setSelectedIndex, setView, view]);
+
+  const stopSession = useCallback(() => {
+    const next = { active: false, view: session.view || 'leads', leadId: null };
+    setSession(next);
+    persistSession(next);
+    notify('Session stopped');
+  }, [notify, persistSession, session.view]);
+
+  const sessionNext = useCallback(() => {
+    const list = getListForView(session.view || view);
+    if (!list.length) { notify('No records in this view'); return; }
+    const idx = session.leadId ? list.findIndex(l => l.id === session.leadId) : -1;
+    const nextIdx = Math.min(idx + 1, list.length - 1);
+    const nextLead = list[nextIdx];
+    const next = { ...session, active: true, view: session.view || view, leadId: nextLead?.id || null };
+    setSession(next);
+    persistSession(next);
+    setSelectedIndex(nextIdx);
+  }, [getListForView, notify, persistSession, session, setSelectedIndex, view]);
+
+  // Quick email log (just mark that we emailed them)
+  const quickLogEmail = useCallback((lead) => {
+    const now = new Date().toISOString();
+    setEmails(prev => [{ 
+      id: generateId(), 
+      leadId: lead.id, 
+      leadName: lead.businessName,
+      to: lead.email || '',
+      sentAt: now
+    }, ...prev]);
+    setLeads(prev => prev.map(l => l.id === lead.id ? { ...l, lastEmailed: now, emailCount: (l.emailCount || 0) + 1 } : l));
+    notify(` Email logged for ${lead.businessName}`);
+  }, [notify]);
+
+  // Lead actions
+  const addLead = useCallback((data) => {
+    if (!data.businessName && !data.phone) { notify('Name or phone required'); return false; }
+    setLeads(prev => [{ id: generateId(), ...data, createdAt: new Date().toISOString(), callCount: 0, callHistory: [], golfCourseId: data.golfCourseId || settings.activeGolfCourse }, ...prev]);
+    notify(`${data.businessName || 'Lead'} added`);
+    return true;
+  }, [notify, settings.activeGolfCourse]);
+
+  // Sale actions
+  const updateSale = useCallback((sale) => {
+    if (!sale?.id) return;
+    setSales(prev => prev.map(s => s.id === sale.id ? { ...s, ...sale } : s));
+    notify('Sale updated');
+  }, [notify]);
+
+  const deleteSale = useCallback((saleId) => {
+    const sale = sales.find(s => s.id === saleId);
+    if (!sale) return;
+    setTrash(prev => [...prev, { ...sale, type: 'sale', deletedAt: new Date().toISOString() }]);
+    setSales(prev => prev.filter(s => s.id !== saleId));
+    notify('Sale deleted');
+  }, [sales, notify]);
+
+
+  const updateLead = useCallback((lead) => { setLeads(prev => prev.map(l => l.id === lead.id ? lead : l)); openModal('leadDetail', lead); closeModal('editLead'); notify('Lead updated'); }, [notify]);
+  const moveToDNC = useCallback((lead) => { setLeads(prev => prev.filter(l => l.id !== lead.id)); setDncList(prev => [...prev, { ...lead, dncDate: new Date().toISOString() }]); notify(` ${lead.businessName} → DNC`); }, [notify]);
+  const moveToDead = useCallback((lead) => { setLeads(prev => prev.filter(l => l.id !== lead.id)); setDeadLeads(prev => [...prev, { ...lead, deadDate: new Date().toISOString() }]); notify(` ${lead.businessName} → Dead`); }, [notify]);
+  const restoreFromDNC = useCallback((lead) => { setDncList(prev => prev.filter(l => l.id !== lead.id)); setLeads(prev => [...prev, { ...lead, restoredAt: new Date().toISOString() }]); notify(` ${lead.businessName} restored`); }, [notify]);
+  const restoreFromDead = useCallback((lead) => { setDeadLeads(prev => prev.filter(l => l.id !== lead.id)); setLeads(prev => [...prev, { ...lead, restoredAt: new Date().toISOString() }]); notify(` ${lead.businessName} restored`); }, [notify]);
+  
+  // Convert lead (sale made!)
+  const convertLead = useCallback((lead, saleData = null) => {
+    setLeads(prev => prev.filter(l => l.id !== lead.id));
+    const convertedLead = { 
+      ...lead, 
+      convertedAt: new Date().toISOString(),
+      status: 'converted'
+    };
+    setConvertedLeads(prev => [convertedLead, ...prev]);
+    
+    // If sale data provided, record the sale
+    if (saleData) {
+      const sale = {
+        id: generateId(),
+        leadId: lead.id,
+        leadName: lead.businessName,
+        saleDate: new Date().toISOString(),
+        saleType: saleData.type,
+        amount: saleData.amount,
+        saleCount: saleData.saleCount || 1,
+        notes: saleData.notes || '',
+        golfCourseId: lead.golfCourseId
+      };
+      setSales(prev => [sale, ...prev]);
+      notify(` SALE! ${lead.businessName} - $${saleData.amount}!`);
+    } else {
+      notify(` ${lead.businessName} converted!`);
+    }
+  }, [notify]);
+
+  // Unconvert lead (sale fell through)
+  const unconvertLead = useCallback((lead) => {
+    setConvertedLeads(prev => prev.filter(l => l.id !== lead.id));
+    setLeads(prev => [...prev, { ...lead, status: 'active', unconvertedAt: new Date().toISOString() }]);
+    // Remove associated sale if exists
+    setSales(prev => prev.filter(s => s.leadId !== lead.id));
+    notify(`️ ${lead.businessName} moved back to leads`);
+  }, [notify]);
+
+  const deleteToTrash = useCallback((item, type) => {
+    if (type === 'lead') setLeads(prev => prev.filter(l => l.id !== item.id));
+    else if (type === 'dnc') setDncList(prev => prev.filter(l => l.id !== item.id));
+    else if (type === 'dead') setDeadLeads(prev => prev.filter(l => l.id !== item.id));
+    else if (type === 'converted') setConvertedLeads(prev => prev.filter(l => l.id !== item.id));
+    setTrash(prev => [...prev, { ...item, type, deletedAt: new Date().toISOString() }]);
+    closeModal('leadDetail');
+    notify('Moved to trash');
+  }, [notify]);
+
+  const restoreFromTrash = useCallback((item) => {
+    if (item.type === 'call') { setCallLog(prev => [item, ...prev]); setDailyStats(prev => ({ ...prev, [new Date(item.timestamp).toDateString()]: (prev[new Date(item.timestamp).toDateString()] || 0) + 1 })); }
+    else if (item.type === 'lead') setLeads(prev => [...prev, item]);
+    else if (item.type === 'dnc') setDncList(prev => [...prev, item]);
+    else if (item.type === 'dead') setDeadLeads(prev => [...prev, item]);
+    else if (item.type === 'converted') setConvertedLeads(prev => [...prev, item]);
+    setTrash(prev => prev.filter(t => !(t.id === item.id && t.type === item.type)));
+    notify('Restored from trash');
+  }, [notify]);
+
+  const emptyTrash = useCallback(() => { if (trash.length && confirm(`Delete ${trash.length} items permanently?`)) { setTrash([]); notify('Trash emptied'); } }, [trash, notify]);
+
+  // Call actions
+  const deleteCall = useCallback((callId) => {
+    const call = callLog.find(c => c.id === callId);
+    if (!call) return;
+    setTrash(prev => [...prev, { ...call, type: 'call', deletedAt: new Date().toISOString() }]);
+    setCallLog(prev => prev.filter(c => c.id !== callId));
+    setDailyStats(prev => ({ ...prev, [new Date(call.timestamp).toDateString()]: Math.max(0, (prev[new Date(call.timestamp).toDateString()] || 1) - 1) }));
+    if (call.leadId) setLeads(prev => prev.map(l => l.id === call.leadId ? { ...l, callCount: Math.max(0, (l.callCount || 1) - 1), callHistory: (l.callHistory || []).filter(h => h.id !== callId) } : l));
+    notify('Call deleted');
+  }, [callLog, notify]);
+
+  const updateCall = useCallback((call) => { setCallLog(prev => prev.map(c => c.id === call.id ? call : c)); closeModal('editCall'); notify('Call updated'); }, [notify]);
+
+  // Golf course actions
+  const addGolfCourse = useCallback((data) => { if (!data.name) { notify('Name required'); return false; } setGolfCourses(prev => [...prev, { id: generateId(), ...data, createdAt: new Date().toISOString() }]); notify(' Course added'); return true; }, [notify]);
+  const updateGolfCourse = useCallback((course) => { setGolfCourses(prev => prev.map(gc => gc.id === course.id ? course : gc)); closeModal('editGolfCourse'); notify('Course updated'); }, [notify]);
+  const deleteGolfCourse = useCallback((id) => { if (confirm('Delete course?')) { setGolfCourses(prev => prev.filter(gc => gc.id !== id)); if (settings.activeGolfCourse === id) setSettings(prev => ({ ...prev, activeGolfCourse: null })); notify('Course deleted'); } }, [settings.activeGolfCourse, notify]);
+
+  // Record a sale
+  const recordSale = useCallback((saleData) => {
+    const sale = {
+      id: generateId(),
+      leadId: saleData.leadId || null,
+      leadName: saleData.leadName || 'Walk-in',
+      saleDate: new Date().toISOString(),
+      saleType: saleData.type,
+      amount: saleData.amount,
+      saleCount: saleData.saleCount || 1,
+      notes: saleData.notes || '',
+      golfCourseId: settings.activeGolfCourse
+    };
+    setSales(prev => [sale, ...prev]);
+    notify(` SALE recorded! $${saleData.amount}`);
+    closeModal('recordSale');
+    return true;
+  }, [notify, settings.activeGolfCourse]);
+
+  // Get current list with sorting
+
 
 
   // Analytics
@@ -419,7 +437,7 @@ const getCurrentList = useCallback(() => getListForView(view), [getListForView, 
       todaysCalls, progress, hotLeads, activeGolfCourse, followUps, overdueCount, analytics, todaysSales, weekSales,
       notify, tallyCall, quickLogEmail, addLead, updateLead, moveToDNC, moveToDead, restoreFromDNC, restoreFromDead, 
       convertLead, unconvertLead, deleteToTrash, restoreFromTrash, emptyTrash,
-      deleteCall, updateCall, addGolfCourse, updateGolfCourse, deleteGolfCourse, recordSale, getListForView, getCurrentList, clearAllData,
+      deleteCall, updateCall, addGolfCourse, updateGolfCourse, deleteGolfCourse, recordSale, updateSale, deleteSale, getCurrentList, clearAllData,
       setLeads, setDncList, setDeadLeads, setConvertedLeads, setCallLog, setGolfCourses, setEmails, setSales
     }}>
       {children}

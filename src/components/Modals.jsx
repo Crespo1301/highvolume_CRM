@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useCRM } from '../context/CRMContext';
 import { colors, buttonBase, inputBase } from '../utils/theme.jsx';
 import { formatDate, formatFollowUpDisplay, formatDateTime, formatDateForInput, formatDateDisplay, isOverdue, generateId, INDUSTRIES, SOURCES, parseDateInput, SALE_TYPES } from '../utils/helpers';
@@ -224,6 +224,94 @@ export function RecordSaleModal() {
   );
 }
 
+
+export function EditSaleModal() {
+  const { modals, closeModal, updateSale, deleteSale, leads } = useCRM();
+  const [form, setForm] = useState(null);
+
+  useEffect(() => {
+    if (!modals.editSale) { setForm(null); return; }
+    setForm({ ...modals.editSale });
+  }, [modals.editSale]);
+
+  if (!modals.editSale || !form) return null;
+
+  const onClose = () => { setForm(null); closeModal('editSale'); };
+
+  const dateValue = form.saleDate ? String(form.saleDate).slice(0, 10) : '';
+
+  const setSaleDate = (dateStr) => {
+    if (!dateStr) return setForm(f => ({ ...f, saleDate: '' }));
+    const time = String(form.saleDate || '').split('T')[1] || '12:00:00';
+    setForm(f => ({ ...f, saleDate: `${dateStr}T${time}` }));
+  };
+
+  return (
+    <Modal onClose={onClose}>
+      <ModalBox maxWidth={520}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <h2 style={{ color: colors.warning, margin: 0, fontSize: 18, letterSpacing: 0.2 }}>Edit Sale</h2>
+          <button onClick={onClose} style={{ ...buttonBase, padding: '8px 10px', background: colors.bg, border: `1px solid ${colors.border}`, color: colors.textMuted }}>✕</button>
+        </div>
+
+        <div style={{ display: 'grid', gap: 14 }}>
+          <div>
+            <label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>Lead</label>
+            <select value={form.leadId || ''} onChange={e => {
+              const leadId = e.target.value;
+              const lead = leads.find(l => l.id === leadId);
+              setForm(f => ({ ...f, leadId: leadId || null, leadName: lead ? lead.businessName : (f.leadName || 'Walk-in') }));
+            }} style={inputBase}>
+              <option value="">(Walk-in / Other)</option>
+              {leads.map(l => <option key={l.id} value={l.id}>{l.businessName}</option>)}
+            </select>
+          </div>
+
+          <div>
+            <label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>Lead Name (override)</label>
+            <input value={form.leadName || ''} onChange={e => setForm(f => ({ ...f, leadName: e.target.value }))} placeholder="Company / Contact" style={inputBase} />
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div>
+              <label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>Sale Date</label>
+              <input type="date" value={dateValue} onChange={e => setSaleDate(e.target.value)} style={inputBase} />
+            </div>
+            <div>
+              <label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>Sale Type</label>
+              <input value={form.saleType || ''} onChange={e => setForm(f => ({ ...f, saleType: e.target.value }))} placeholder="Package / Type" style={inputBase} />
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div>
+              <label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>Amount</label>
+              <input type="number" value={form.amount || 0} onChange={e => setForm(f => ({ ...f, amount: Number(e.target.value) }))} style={inputBase} />
+            </div>
+            <div>
+              <label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>Sale Count</label>
+              <input type="number" value={form.saleCount || 1} onChange={e => setForm(f => ({ ...f, saleCount: Number(e.target.value) }))} style={inputBase} />
+            </div>
+          </div>
+
+          <div>
+            <label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>Notes</label>
+            <textarea rows={3} value={form.notes || ''} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} style={{ ...inputBase, resize: 'vertical' }} />
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: 10, marginTop: 18, justifyContent: 'space-between' }}>
+          <button onClick={() => { if (confirm('Delete this sale?')) { deleteSale(form.id); onClose(); } }} style={{ ...buttonBase, background: colors.bg, border: `1px solid ${colors.danger}`, color: colors.danger }}>Delete</button>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button onClick={onClose} style={{ ...buttonBase, background: colors.bg, border: `1px solid ${colors.border}`, color: colors.text }}>Cancel</button>
+            <button onClick={() => { updateSale(form); onClose(); }} style={{ ...buttonBase, background: colors.warning, color: '#001018', fontWeight: 700 }}>Save</button>
+          </div>
+        </div>
+      </ModalBox>
+    </Modal>
+  );
+}
+
 export function LeadDetailModal() {
   const { modals, closeModal, openModal, updateLead, moveToDNC, moveToDead, convertLead, deleteToTrash, tallyCall, quickLogEmail, deleteCall } = useCRM();
   const [showConvert, setShowConvert] = useState(false);
@@ -369,35 +457,15 @@ export function LeadDetailModal() {
 export function EditLeadModal() {
   const { modals, closeModal, updateLead, golfCourses } = useCRM();
   const [form, setForm] = useState(null);
-  const extractTime = (followUp) => {
-    if (!followUp) return '';
-    const t = String(followUp).split('T')[1] || '';
-    const hm = t.slice(0,5);
-    // Treat stored default noon as "no time" (date-only)
-    if (hm === '12:00') return '';
-    if (hm === '00:00') return '';
-    return hm;
-  };
-  const combineFollowUp = (dateStr, timeStr) => {
-    if (!dateStr) return '';
-    if (!timeStr) return `${dateStr}T12:00:00`;
-    const clean = timeStr.length === 5 ? `${timeStr}:00` : timeStr;
-    return `${dateStr}T${clean}`;
-  };
-  React.useEffect(() => {
-    if (!modals.editLead) { setForm(null); return; }
-    setForm({ ...modals.editLead, followUpTime: extractTime(modals.editLead.followUp) });
-  }, [modals.editLead]);
-  if (!modals.editLead || !form) return null;
-
-  const onClose = () => { setForm(null); closeModal('editLead'); };
+  React.useEffect(() => { if (modals.editLead) setForm({ ...modals.editLead }); }, [modals.editLead]);
+  if (!form) return null;
 
   return (
-    <Modal onClose={onClose}>
+    <Modal onClose={() => closeModal('editLead')}>
       <ModalBox maxWidth={700}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
           <h2 style={{ color: colors.text, fontSize: 18 }}>✏️ Edit Lead</h2>
-          <button onClick={onClose} style={{ ...buttonBase, background: colors.bgCard, color: colors.textMuted }}><IconX size={16} /></button>
+          <button onClick={() => closeModal('editLead')} style={{ ...buttonBase, background: colors.bgCard, color: colors.textMuted }}><IconX size={16} /></button>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
           {[['businessName', 'Business Name', 2], ['contactName', 'Contact', 1], ['phone', 'Phone', 1], ['email', 'Email', 1], ['website', 'Website', 1], ['address', 'Address', 2]].map(([key, label, span]) => (
@@ -420,24 +488,7 @@ export function EditLeadModal() {
               {SOURCES.map(src => <option key={src} value={src}>{src}</option>)}
             </select>
           </div>
-          <DateInput value={form.followUp} onChange={val => {
-            const dateStr = val ? String(val).slice(0, 10) : '';
-            setForm(f => {
-              if (!dateStr) return { ...f, followUp: '', followUpTime: '' };
-              return { ...f, followUp: combineFollowUp(dateStr, f.followUpTime) };
-            });
-          }} label="Follow-up" />
-          <div>
-            <label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>Callback Time</label>
-            <input type="time" value={form.followUpTime || ''} onChange={e => {
-              const time = e.target.value;
-              setForm(f => {
-                const dateStr = f.followUp ? String(f.followUp).slice(0, 10) : '';
-                if (!dateStr) return { ...f, followUpTime: time };
-                return { ...f, followUpTime: time, followUp: combineFollowUp(dateStr, time) };
-              });
-            }} style={inputBase} />
-          </div>
+          <DateInput value={form.followUp} onChange={val => setForm(f => ({ ...f, followUp: val }))} label="Follow-up" />
           <div>
             <label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>Priority</label>
             <select value={form.priority || 'normal'} onChange={e => setForm(f => ({ ...f, priority: e.target.value }))} style={inputBase}>
@@ -459,11 +510,8 @@ export function EditLeadModal() {
           </div>
         </div>
         <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
-          <button onClick={() => {
-            const { followUpTime, ...payload } = form;
-            updateLead(payload);
-          }} style={{ ...buttonBase, flex: 1, background: colors.success, color: '#fff' }}>Save</button>
-          <button onClick={onClose} style={{ ...buttonBase, background: colors.bgCard, color: colors.text }}>Cancel</button>
+          <button onClick={() => updateLead(form)} style={{ ...buttonBase, flex: 1, background: colors.success, color: '#fff' }}>Save</button>
+          <button onClick={() => closeModal('editLead')} style={{ ...buttonBase, background: colors.bgCard, color: colors.text }}>Cancel</button>
         </div>
       </ModalBox>
     </Modal>
@@ -474,7 +522,7 @@ export function EditCallModal() {
   const { modals, closeModal, updateCall, deleteCall } = useCRM();
   const [form, setForm] = useState(null);
   React.useEffect(() => { if (modals.editCall) setForm({ ...modals.editCall }); }, [modals.editCall]);
-  if (!modals.editLead || !form) return null;
+  if (!form) return null;
   return (
     <Modal onClose={() => closeModal('editCall')}>
       <ModalBox maxWidth={500}>
@@ -507,7 +555,7 @@ export function EditGolfCourseModal() {
   const { modals, closeModal, updateGolfCourse, deleteGolfCourse } = useCRM();
   const [form, setForm] = useState(null);
   React.useEffect(() => { if (modals.editGolfCourse) setForm({ ...modals.editGolfCourse }); }, [modals.editGolfCourse]);
-  if (!modals.editLead || !form) return null;
+  if (!form) return null;
   return (
     <Modal onClose={() => closeModal('editGolfCourse')}>
       <ModalBox maxWidth={550}>
@@ -555,6 +603,7 @@ export function AllModals() {
       <ImportModal />
       <ExportModal />
       <RecordSaleModal />
+      <EditSaleModal />
       <LeadDetailModal />
       <EditLeadModal />
       <EditCallModal />

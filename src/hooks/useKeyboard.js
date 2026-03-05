@@ -52,8 +52,8 @@ export function useKeyboard() {
           break;
           break;
         case ' ': case '0':
-          // Manual call tally (fast counting during high-volume dialing)
           e.preventDefault();
+          // Manual tally for fast counting during live dialing
           tallyCall(null, 'manual');
           break;
         case '2': case 'arrowdown': 

@@ -4,11 +4,34 @@ import { colors, buttonBase, inputBase } from '../utils/theme.jsx';
 import { formatDate, formatFollowUpDisplay, formatDateTime, formatDateForInput, formatDateDisplay, isOverdue, generateId, INDUSTRIES, SOURCES, parseDateInput, SALE_TYPES } from '../utils/helpers';
 import { IconX } from './Icons';
 
-const Modal = ({ children, onClose }) => (
-  <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999, backdropFilter: 'blur(4px)' }} onClick={onClose}>
-    <div onClick={e => e.stopPropagation()}>{children}</div>
-  </div>
-);
+const Modal = ({ children, onClose }) => {
+  React.useEffect(() => {
+    if (!onClose) return;
+    const handler = (e) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [onClose]);
+
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'rgba(0,0,0,0.8)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 999,
+        backdropFilter: 'blur(4px)'
+      }}
+      onClick={onClose}
+    >
+      <div onClick={e => e.stopPropagation()}>{children}</div>
+    </div>
+  );
+};
 
 const ModalBox = ({ children, maxWidth = 600 }) => (
   <div style={{ background: colors.bgLight, border: `1px solid ${colors.border}`, borderRadius: 16, padding: 28, maxWidth, width: '90%', maxHeight: '85vh', overflowY: 'auto' }}>
@@ -77,26 +100,6 @@ export function SettingsModal() {
           <label style={{ display: 'block', color: colors.textMuted, marginBottom: 6, fontSize: 12 }}>Daily Sales Goal</label>
           <input type="number" value={settings.dailySalesGoal || 2} onChange={e => setSettings(p => ({ ...p, dailySalesGoal: parseInt(e.target.value) || 2 }))} style={inputBase} />
         </div>
-
-        <div style={{ display: 'grid', gap: 12, marginBottom: 16 }}>
-          <div>
-            <label style={{ display: 'block', color: colors.textMuted, marginBottom: 6, fontSize: 12 }}>Quota Month</label>
-            <input type="month" value={settings.quotaMonth || ''} onChange={e => setSettings(p => ({ ...p, quotaMonth: e.target.value }))} style={inputBase} />
-          </div>
-          <div>
-            <label style={{ display: 'block', color: colors.textMuted, marginBottom: 6, fontSize: 12 }}>Monthly Quota ($)</label>
-            <input type="number" value={settings.monthlyQuota || 0} onChange={e => setSettings(p => ({ ...p, monthlyQuota: parseFloat(e.target.value) || 0 }))} style={inputBase} />
-          </div>
-          <div>
-            <label style={{ display: 'block', color: colors.textMuted, marginBottom: 6, fontSize: 12 }}>Daily Revenue Goal ($)</label>
-            <input type="number" value={settings.dailyRevenueGoal || 0} onChange={e => setSettings(p => ({ ...p, dailyRevenueGoal: parseFloat(e.target.value) || 0 }))} style={inputBase} />
-          </div>
-          <div>
-            <label style={{ display: 'block', color: colors.textMuted, marginBottom: 6, fontSize: 12 }}>Weekly Revenue Goal ($)</label>
-            <input type="number" value={settings.weeklyRevenueGoal || 0} onChange={e => setSettings(p => ({ ...p, weeklyRevenueGoal: parseFloat(e.target.value) || 0 }))} style={inputBase} />
-          </div>
-        </div>
-
         <div style={{ marginBottom: 20 }}>
           <label style={{ display: 'block', color: colors.textMuted, marginBottom: 6, fontSize: 12 }}>Active Golf Course</label>
           <select value={settings.activeGolfCourse || ''} onChange={e => setSettings(p => ({ ...p, activeGolfCourse: e.target.value || null }))} style={inputBase}>
@@ -244,97 +247,6 @@ export function RecordSaleModal() {
   );
 }
 
-export function EditSaleModal() {
-  const { modals, closeModal, updateSale, deleteSale, leads } = useCRM();
-  const [form, setForm] = useState(null);
-  if (!modals.editSale) return null;
-
-  React.useEffect(() => {
-    if (!modals.editSale) { setForm(null); return; }
-    setForm({ ...modals.editSale });
-  }, [modals.editSale]);
-
-  if (!form) return null;
-
-  const onClose = () => { setForm(null); closeModal('editSale'); };
-
-  const linkedLead = form.leadId ? leads.find(l => l.id === form.leadId) : null;
-
-  return (
-    <Modal onClose={onClose}>
-      <ModalBox maxWidth={480}>
-        <h2 style={{ color: colors.warning, marginBottom: 18, fontSize: 18 }}>Edit Sale</h2>
-
-        <div style={{ display: 'grid', gap: 12 }}>
-          <div>
-            <label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>Linked Lead</label>
-            <select
-              value={form.leadId || ''}
-              onChange={e => setForm(f => ({ ...f, leadId: e.target.value || null }))}
-              style={inputBase}
-            >
-              <option value="">None</option>
-              {leads.map(l => (
-                <option key={l.id} value={l.id}>{l.businessName}</option>
-              ))}
-            </select>
-            {linkedLead && (
-              <div style={{ color: colors.textDim, fontSize: 11, marginTop: 6 }}>
-                {linkedLead.phone ? `Phone: ${linkedLead.phone}` : ''}{linkedLead.industry ? ` • ${linkedLead.industry}` : ''}
-              </div>
-            )}
-          </div>
-
-          <div>
-            <label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>Lead Name (override)</label>
-            <input value={form.leadName || ''} onChange={e => setForm(f => ({ ...f, leadName: e.target.value }))} style={inputBase} />
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            <div>
-              <label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>Sale Date</label>
-              <input
-                type="datetime-local"
-                value={(form.saleDate || '').slice(0, 16)}
-                onChange={e => setForm(f => ({ ...f, saleDate: e.target.value ? new Date(e.target.value).toISOString() : f.saleDate }))}
-                style={inputBase}
-              />
-            </div>
-            <div>
-              <label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>Sale Type</label>
-              <input value={form.saleType || ''} onChange={e => setForm(f => ({ ...f, saleType: e.target.value }))} style={inputBase} />
-            </div>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            <div>
-              <label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>Amount ($)</label>
-              <input type="number" value={form.amount || 0} onChange={e => setForm(f => ({ ...f, amount: parseFloat(e.target.value) || 0 }))} style={inputBase} />
-            </div>
-            <div>
-              <label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>Sale Count</label>
-              <input type="number" value={form.saleCount || 1} onChange={e => setForm(f => ({ ...f, saleCount: parseInt(e.target.value) || 1 }))} style={inputBase} />
-            </div>
-          </div>
-
-          <div>
-            <label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>Notes</label>
-            <textarea value={form.notes || ''} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} style={{ ...inputBase, minHeight: 80 }} />
-          </div>
-
-          <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
-            <button onClick={onClose} style={{ ...buttonBase, flex: 1, background: colors.bgCard, color: colors.text }}>Cancel</button>
-            <button onClick={() => updateSale(form)} style={{ ...buttonBase, flex: 1, background: colors.warning, color: '#000', fontWeight: 700 }}>Save</button>
-          </div>
-
-          <button onClick={() => deleteSale(form)} style={{ ...buttonBase, width: '100%', background: colors.danger, color: '#fff', marginTop: 6 }}>
-            Delete Sale
-          </button>
-        </div>
-      </ModalBox>
-    </Modal>
-  );
-}
 export function LeadDetailModal() {
   const { modals, closeModal, openModal, updateLead, moveToDNC, moveToDead, convertLead, deleteToTrash, tallyCall, quickLogEmail, deleteCall } = useCRM();
   const [showConvert, setShowConvert] = useState(false);
@@ -541,6 +453,141 @@ export function EditLeadModal() {
   );
 }
 
+
+// Edit Sale Modal
+export function EditSaleModal() {
+  const { modals, closeModal, updateSale, deleteSale, leads, convertedLeads, golfCourses } = useCRM();
+  const [form, setForm] = useState(null);
+
+  const extract = (iso) => {
+    if (!iso) return { date: '', time: '' };
+    const s = String(iso);
+    const [d, t] = s.split('T');
+    return { date: d || '', time: (t || '').slice(0, 5) };
+  };
+
+  React.useEffect(() => {
+    if (!modals.editSale) { setForm(null); return; }
+    const sale = modals.editSale;
+    const { date, time } = extract(sale.saleDate);
+    setForm({
+      ...sale,
+      saleDateOnly: date,
+      saleTimeOnly: time
+    });
+  }, [modals.editSale]);
+
+  if (!modals.editSale || !form) return null;
+
+  const onClose = () => { setForm(null); closeModal('editSale'); };
+
+  const leadOptions = [
+    ...(leads || []),
+    ...(convertedLeads || [])
+  ].sort((a, b) => (a.businessName || '').localeCompare(b.businessName || ''));
+
+  const updateDateTime = (dateStr, timeStr) => {
+    if (!dateStr) return '';
+    const t = timeStr ? `${timeStr}:00` : '12:00:00';
+    return `${dateStr}T${t}`;
+  };
+
+  const onSave = () => {
+    const payload = { ...form };
+    payload.saleDate = updateDateTime(form.saleDateOnly, form.saleTimeOnly);
+    delete payload.saleDateOnly;
+    delete payload.saleTimeOnly;
+    updateSale(payload);
+  };
+
+  return (
+    <Modal onClose={onClose}>
+      <ModalBox maxWidth={700}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+          <h2 style={{ color: colors.text, fontSize: 18 }}>Edit Sale</h2>
+          <button onClick={onClose} style={{ ...buttonBase, background: colors.bgCard, color: colors.textMuted }}><IconX size={16} /></button>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+          <div style={{ gridColumn: 'span 2' }}>
+            <label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>Lead</label>
+            <select
+              value={form.leadId || ''}
+              onChange={e => {
+                const id = e.target.value || null;
+                const found = leadOptions.find(l => l.id === id);
+                setForm(f => ({
+                  ...f,
+                  leadId: id,
+                  leadName: found?.businessName || f.leadName || 'Walk-in',
+                  golfCourseId: found?.golfCourseId || f.golfCourseId || ''
+                }));
+              }}
+              style={{ ...inputBase, background: colors.bg }}
+            >
+              <option value="">(Walk-in / Unlinked)</option>
+              {leadOptions.map(l => (
+                <option key={l.id} value={l.id}>{l.businessName}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>Sale Type</label>
+            <input value={form.saleType || ''} onChange={e => setForm(f => ({ ...f, saleType: e.target.value }))} style={inputBase} />
+          </div>
+
+          <div>
+            <label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>Golf Course</label>
+            <select
+              value={form.golfCourseId || ''}
+              onChange={e => setForm(f => ({ ...f, golfCourseId: e.target.value }))}
+              style={{ ...inputBase, background: colors.bg }}
+            >
+              <option value="">(None)</option>
+              {(golfCourses || []).map(gc => (
+                <option key={gc.id} value={gc.id}>{gc.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>Amount</label>
+            <input type="number" value={form.amount ?? ''} onChange={e => setForm(f => ({ ...f, amount: Number(e.target.value) }))} style={inputBase} />
+          </div>
+
+          <div>
+            <label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>Sale Count</label>
+            <input type="number" value={form.saleCount ?? 1} onChange={e => setForm(f => ({ ...f, saleCount: Number(e.target.value) }))} style={inputBase} />
+          </div>
+
+          <div>
+            <label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>Sale Date</label>
+            <input type="date" value={form.saleDateOnly || ''} onChange={e => setForm(f => ({ ...f, saleDateOnly: e.target.value }))} style={inputBase} />
+          </div>
+
+          <div>
+            <label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>Sale Time</label>
+            <input type="time" value={form.saleTimeOnly || ''} onChange={e => setForm(f => ({ ...f, saleTimeOnly: e.target.value }))} style={inputBase} />
+          </div>
+
+          <div style={{ gridColumn: 'span 2' }}>
+            <label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>Notes</label>
+            <textarea value={form.notes || ''} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={3} style={{ ...inputBase, resize: 'vertical' }} />
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
+          <button onClick={onSave} style={{ ...buttonBase, flex: 1, background: colors.success, color: '#fff' }}>Save</button>
+          <button onClick={() => deleteSale(form)} style={{ ...buttonBase, background: colors.danger, color: '#fff' }}>Delete</button>
+          <button onClick={onClose} style={{ ...buttonBase, background: colors.bgCard, color: colors.text }}>Cancel</button>
+        </div>
+      </ModalBox>
+    </Modal>
+  );
+}
+
+
 export function EditCallModal() {
   const { modals, closeModal, updateCall, deleteCall } = useCRM();
   const [form, setForm] = useState(null);
@@ -626,9 +673,9 @@ export function AllModals() {
       <ImportModal />
       <ExportModal />
       <RecordSaleModal />
-      <EditSaleModal />
       <LeadDetailModal />
       <EditLeadModal />
+      <EditSaleModal />
       <EditCallModal />
       <EditGolfCourseModal />
       <PrivacyModal />

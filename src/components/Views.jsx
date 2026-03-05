@@ -64,7 +64,7 @@ function Pill({ label }) {
 }
 
 export function Dashboard() {
-  const { todaysCalls, settings, progress, leads, hotLeads, followUps, analytics, tallyCall, setView, openModal, activeGolfCourse, todaysSales, weekSales, convertedLeads, quotaStats } = useCRM();
+  const { todaysCalls, settings, progress, leads, hotLeads, followUps, analytics, tallyCall, setView, openModal, activeGolfCourse, todaysSales, weekSales, convertedLeads } = useCRM();
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
@@ -84,17 +84,7 @@ export function Dashboard() {
         <Stat label="Sales" value={weekSales.count} color={colors.accent} />
         <Stat label="Revenue" value={`$${weekSales.revenue.toLocaleString()}`} color={colors.success} />
         <Stat label="Converted" value={convertedLeads.length} />
-      
-      <Card title=" Quota" color={colors.warning}>
-        <Stat label="Month" value={quotaStats.month} />
-        <Stat label="Quota" value={`$${(quotaStats.monthlyQuota || 0).toLocaleString()}`} />
-        <Stat label="So far" value={`$${(quotaStats.revenueSoFar || 0).toLocaleString()}`} color={colors.success} />
-        <Stat label="Remaining" value={`$${(quotaStats.remaining || 0).toLocaleString()}`} color={quotaStats.remaining > 0 ? colors.warning : colors.success} />
-        <Stat label="Daily quota" value={`$${Math.round(quotaStats.dailyQuota || 0).toLocaleString()}`} />
-        <Stat label="Min/day" value={`$${Math.round(quotaStats.minimumDaily || 0).toLocaleString()}`} color={quotaStats.remaining > 0 ? colors.danger : colors.success} />
       </Card>
-
-</Card>
 
       <Card title=" Leads" color={colors.primary}>
         <Stat label="Active" value={leads.length} />
@@ -374,7 +364,8 @@ export function ListView({ type }) {
     dead: 'Enter to restore',
     converted: 'Enter to unconvert',
     calllog: 'Enter to edit',
-    trash: 'Enter to restore'
+    trash: 'Enter to restore',
+    sales: 'Enter to edit'
   };
 
   return (
@@ -489,7 +480,7 @@ export function ListView({ type }) {
               setSelectedIndex(idx);
               if (type === 'calllog') openModal('editCall', item);
               else if (type === 'trash') restoreFromTrash(item);
-              else if (type === 'sales') openModal('editSale', item)
+              else if (type === 'sales') { openModal('editSale', item); }
               else if (type !== 'emails' && type !== 'dnc' && type !== 'dead' && type !== 'converted') openModal('leadDetail', item);
             }} 
             style={{ 
@@ -574,13 +565,7 @@ export function ListView({ type }) {
                   )}
                   <div style={{ textAlign: 'right' }}>
                     {['leads', 'followups'].includes(type) && <div style={{ color: colors.success, fontSize: 13, fontWeight: '600' }}>{item.callCount || 0} calls</div>}
-                    {item.followUp && (() => {
-                      const d = new Date(item.followUp);
-                      const today = new Date();
-                      const isDueToday = d.toDateString() === today.toDateString();
-                      const color = isOverdue(item.followUp) ? colors.danger : (isDueToday ? colors.warning : colors.textDim);
-                      return <div style={{ color, fontSize: 11 }}> {formatFollowUpDisplay(item.followUp)}</div>;
-                    })()}
+                    {item.followUp && <div style={{ color: isOverdue(item.followUp) ? colors.danger : colors.textDim, fontSize: 11 }}> {formatFollowUpDisplay(item.followUp)}</div>}
                   </div>
                 </div>
               </div>

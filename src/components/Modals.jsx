@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { useCRM } from '../context/CRMContext';
 import { colors, buttonBase, inputBase } from '../utils/theme.jsx';
 import { formatDate, formatFollowUpDisplay, formatDateTime, formatDateForInput, formatDateDisplay, isOverdue, generateId, INDUSTRIES, SOURCES, parseDateInput, SALE_TYPES } from '../utils/helpers';
@@ -77,6 +77,26 @@ export function SettingsModal() {
           <label style={{ display: 'block', color: colors.textMuted, marginBottom: 6, fontSize: 12 }}>Daily Sales Goal</label>
           <input type="number" value={settings.dailySalesGoal || 2} onChange={e => setSettings(p => ({ ...p, dailySalesGoal: parseInt(e.target.value) || 2 }))} style={inputBase} />
         </div>
+
+        <div style={{ display: 'grid', gap: 12, marginBottom: 16 }}>
+          <div>
+            <label style={{ display: 'block', color: colors.textMuted, marginBottom: 6, fontSize: 12 }}>Quota Month</label>
+            <input type="month" value={settings.quotaMonth || ''} onChange={e => setSettings(p => ({ ...p, quotaMonth: e.target.value }))} style={inputBase} />
+          </div>
+          <div>
+            <label style={{ display: 'block', color: colors.textMuted, marginBottom: 6, fontSize: 12 }}>Monthly Quota ($)</label>
+            <input type="number" value={settings.monthlyQuota || 0} onChange={e => setSettings(p => ({ ...p, monthlyQuota: parseFloat(e.target.value) || 0 }))} style={inputBase} />
+          </div>
+          <div>
+            <label style={{ display: 'block', color: colors.textMuted, marginBottom: 6, fontSize: 12 }}>Daily Revenue Goal ($)</label>
+            <input type="number" value={settings.dailyRevenueGoal || 0} onChange={e => setSettings(p => ({ ...p, dailyRevenueGoal: parseFloat(e.target.value) || 0 }))} style={inputBase} />
+          </div>
+          <div>
+            <label style={{ display: 'block', color: colors.textMuted, marginBottom: 6, fontSize: 12 }}>Weekly Revenue Goal ($)</label>
+            <input type="number" value={settings.weeklyRevenueGoal || 0} onChange={e => setSettings(p => ({ ...p, weeklyRevenueGoal: parseFloat(e.target.value) || 0 }))} style={inputBase} />
+          </div>
+        </div>
+
         <div style={{ marginBottom: 20 }}>
           <label style={{ display: 'block', color: colors.textMuted, marginBottom: 6, fontSize: 12 }}>Active Golf Course</label>
           <select value={settings.activeGolfCourse || ''} onChange={e => setSettings(p => ({ ...p, activeGolfCourse: e.target.value || null }))} style={inputBase}>
@@ -224,94 +244,97 @@ export function RecordSaleModal() {
   );
 }
 
-
 export function EditSaleModal() {
   const { modals, closeModal, updateSale, deleteSale, leads } = useCRM();
   const [form, setForm] = useState(null);
+  if (!modals.editSale) return null;
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (!modals.editSale) { setForm(null); return; }
     setForm({ ...modals.editSale });
   }, [modals.editSale]);
 
-  if (!modals.editSale || !form) return null;
+  if (!form) return null;
 
   const onClose = () => { setForm(null); closeModal('editSale'); };
 
-  const dateValue = form.saleDate ? String(form.saleDate).slice(0, 10) : '';
-
-  const setSaleDate = (dateStr) => {
-    if (!dateStr) return setForm(f => ({ ...f, saleDate: '' }));
-    const time = String(form.saleDate || '').split('T')[1] || '12:00:00';
-    setForm(f => ({ ...f, saleDate: `${dateStr}T${time}` }));
-  };
+  const linkedLead = form.leadId ? leads.find(l => l.id === form.leadId) : null;
 
   return (
     <Modal onClose={onClose}>
-      <ModalBox maxWidth={520}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <h2 style={{ color: colors.warning, margin: 0, fontSize: 18, letterSpacing: 0.2 }}>Edit Sale</h2>
-          <button onClick={onClose} style={{ ...buttonBase, padding: '8px 10px', background: colors.bg, border: `1px solid ${colors.border}`, color: colors.textMuted }}>✕</button>
-        </div>
+      <ModalBox maxWidth={480}>
+        <h2 style={{ color: colors.warning, marginBottom: 18, fontSize: 18 }}>Edit Sale</h2>
 
-        <div style={{ display: 'grid', gap: 14 }}>
+        <div style={{ display: 'grid', gap: 12 }}>
           <div>
-            <label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>Lead</label>
-            <select value={form.leadId || ''} onChange={e => {
-              const leadId = e.target.value;
-              const lead = leads.find(l => l.id === leadId);
-              setForm(f => ({ ...f, leadId: leadId || null, leadName: lead ? lead.businessName : (f.leadName || 'Walk-in') }));
-            }} style={inputBase}>
-              <option value="">(Walk-in / Other)</option>
-              {leads.map(l => <option key={l.id} value={l.id}>{l.businessName}</option>)}
+            <label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>Linked Lead</label>
+            <select
+              value={form.leadId || ''}
+              onChange={e => setForm(f => ({ ...f, leadId: e.target.value || null }))}
+              style={inputBase}
+            >
+              <option value="">None</option>
+              {leads.map(l => (
+                <option key={l.id} value={l.id}>{l.businessName}</option>
+              ))}
             </select>
+            {linkedLead && (
+              <div style={{ color: colors.textDim, fontSize: 11, marginTop: 6 }}>
+                {linkedLead.phone ? `Phone: ${linkedLead.phone}` : ''}{linkedLead.industry ? ` • ${linkedLead.industry}` : ''}
+              </div>
+            )}
           </div>
 
           <div>
             <label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>Lead Name (override)</label>
-            <input value={form.leadName || ''} onChange={e => setForm(f => ({ ...f, leadName: e.target.value }))} placeholder="Company / Contact" style={inputBase} />
+            <input value={form.leadName || ''} onChange={e => setForm(f => ({ ...f, leadName: e.target.value }))} style={inputBase} />
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             <div>
               <label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>Sale Date</label>
-              <input type="date" value={dateValue} onChange={e => setSaleDate(e.target.value)} style={inputBase} />
+              <input
+                type="datetime-local"
+                value={(form.saleDate || '').slice(0, 16)}
+                onChange={e => setForm(f => ({ ...f, saleDate: e.target.value ? new Date(e.target.value).toISOString() : f.saleDate }))}
+                style={inputBase}
+              />
             </div>
             <div>
               <label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>Sale Type</label>
-              <input value={form.saleType || ''} onChange={e => setForm(f => ({ ...f, saleType: e.target.value }))} placeholder="Package / Type" style={inputBase} />
+              <input value={form.saleType || ''} onChange={e => setForm(f => ({ ...f, saleType: e.target.value }))} style={inputBase} />
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             <div>
-              <label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>Amount</label>
-              <input type="number" value={form.amount || 0} onChange={e => setForm(f => ({ ...f, amount: Number(e.target.value) }))} style={inputBase} />
+              <label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>Amount ($)</label>
+              <input type="number" value={form.amount || 0} onChange={e => setForm(f => ({ ...f, amount: parseFloat(e.target.value) || 0 }))} style={inputBase} />
             </div>
             <div>
               <label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>Sale Count</label>
-              <input type="number" value={form.saleCount || 1} onChange={e => setForm(f => ({ ...f, saleCount: Number(e.target.value) }))} style={inputBase} />
+              <input type="number" value={form.saleCount || 1} onChange={e => setForm(f => ({ ...f, saleCount: parseInt(e.target.value) || 1 }))} style={inputBase} />
             </div>
           </div>
 
           <div>
             <label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>Notes</label>
-            <textarea rows={3} value={form.notes || ''} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} style={{ ...inputBase, resize: 'vertical' }} />
+            <textarea value={form.notes || ''} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} style={{ ...inputBase, minHeight: 80 }} />
           </div>
-        </div>
 
-        <div style={{ display: 'flex', gap: 10, marginTop: 18, justifyContent: 'space-between' }}>
-          <button onClick={() => { if (confirm('Delete this sale?')) { deleteSale(form.id); onClose(); } }} style={{ ...buttonBase, background: colors.bg, border: `1px solid ${colors.danger}`, color: colors.danger }}>Delete</button>
-          <div style={{ display: 'flex', gap: 10 }}>
-            <button onClick={onClose} style={{ ...buttonBase, background: colors.bg, border: `1px solid ${colors.border}`, color: colors.text }}>Cancel</button>
-            <button onClick={() => { updateSale(form); onClose(); }} style={{ ...buttonBase, background: colors.warning, color: '#001018', fontWeight: 700 }}>Save</button>
+          <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
+            <button onClick={onClose} style={{ ...buttonBase, flex: 1, background: colors.bgCard, color: colors.text }}>Cancel</button>
+            <button onClick={() => updateSale(form)} style={{ ...buttonBase, flex: 1, background: colors.warning, color: '#000', fontWeight: 700 }}>Save</button>
           </div>
+
+          <button onClick={() => deleteSale(form)} style={{ ...buttonBase, width: '100%', background: colors.danger, color: '#fff', marginTop: 6 }}>
+            Delete Sale
+          </button>
         </div>
       </ModalBox>
     </Modal>
   );
 }
-
 export function LeadDetailModal() {
   const { modals, closeModal, openModal, updateLead, moveToDNC, moveToDead, convertLead, deleteToTrash, tallyCall, quickLogEmail, deleteCall } = useCRM();
   const [showConvert, setShowConvert] = useState(false);

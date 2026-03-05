@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useCRM } from '../context/CRMContext';
 import { colors, buttonBase, inputBase } from '../utils/theme.jsx';
-import { formatDate, formatDateTime, formatFollowUpDisplay, formatDateForInput, formatDateDisplay, isOverdue, followUpStatus, INDUSTRIES, SOURCES, parseDateInput, SORT_OPTIONS, SALE_TYPES } from '../utils/helpers';
+import { formatDate, formatDateTime, formatFollowUpDisplay, formatDateForInput, formatDateDisplay, isOverdue, INDUSTRIES, SOURCES, parseDateInput, SORT_OPTIONS, SALE_TYPES } from '../utils/helpers';
 import { IconPlay, IconStop, IconChevronRight, IconPhone, IconCalendar, IconCheck, IconBan, IconSkull, IconFlag } from './Icons';
 
 // Card component
@@ -64,7 +64,7 @@ function Pill({ label }) {
 }
 
 export function Dashboard() {
-  const { todaysCalls, settings, progress, leads, hotLeads, followUps, analytics, tallyCall, setView, openModal, activeGolfCourse, todaysSales, weekSales, convertedLeads } = useCRM();
+  const { todaysCalls, settings, progress, leads, hotLeads, followUps, analytics, tallyCall, setView, openModal, activeGolfCourse, todaysSales, weekSales, convertedLeads, quotaStats } = useCRM();
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
@@ -84,7 +84,17 @@ export function Dashboard() {
         <Stat label="Sales" value={weekSales.count} color={colors.accent} />
         <Stat label="Revenue" value={`$${weekSales.revenue.toLocaleString()}`} color={colors.success} />
         <Stat label="Converted" value={convertedLeads.length} />
+      
+      <Card title=" Quota" color={colors.warning}>
+        <Stat label="Month" value={quotaStats.month} />
+        <Stat label="Quota" value={`$${(quotaStats.monthlyQuota || 0).toLocaleString()}`} />
+        <Stat label="So far" value={`$${(quotaStats.revenueSoFar || 0).toLocaleString()}`} color={colors.success} />
+        <Stat label="Remaining" value={`$${(quotaStats.remaining || 0).toLocaleString()}`} color={quotaStats.remaining > 0 ? colors.warning : colors.success} />
+        <Stat label="Daily quota" value={`$${Math.round(quotaStats.dailyQuota || 0).toLocaleString()}`} />
+        <Stat label="Min/day" value={`$${Math.round(quotaStats.minimumDaily || 0).toLocaleString()}`} color={quotaStats.remaining > 0 ? colors.danger : colors.success} />
       </Card>
+
+</Card>
 
       <Card title=" Leads" color={colors.primary}>
         <Stat label="Active" value={leads.length} />
@@ -117,9 +127,9 @@ export function Dashboard() {
       {followUps.length > 0 && (
         <Card title=" Follow-ups Due" color={colors.warning} borderColor={colors.warning}>
           {followUps.slice(0, 4).map(l => (
-            <div key={l.id} onClick={() => openModal('leadDetail', l)} style={{ padding: 12, background: colors.bgLight, borderRadius: 8, marginBottom: 8, cursor: 'pointer', borderLeft: `3px solid ${followUpStatus(l.followUp) === 'overdue' ? colors.danger : followUpStatus(l.followUp) === 'due' ? colors.warning : colors.textDim}` }}>
+            <div key={l.id} onClick={() => openModal('leadDetail', l)} style={{ padding: 12, background: colors.bgLight, borderRadius: 8, marginBottom: 8, cursor: 'pointer', borderLeft: `3px solid ${isOverdue(l.followUp) ? colors.danger : colors.warning}` }}>
               <div style={{ fontWeight: '600', fontSize: 13 }}>{l.businessName}</div>
-              <div style={{ color: followUpStatus(l.followUp) === 'overdue' ? colors.danger : followUpStatus(l.followUp) === 'due' ? colors.warning : colors.textMuted, fontSize: 11 }}>{formatFollowUpDisplay(l.followUp)} {followUpStatus(l.followUp) === 'overdue' ? '(OVERDUE)' : followUpStatus(l.followUp) === 'due' ? '(DUE TODAY)' : ''}</div>
+              <div style={{ color: isOverdue(l.followUp) ? colors.danger : colors.textMuted, fontSize: 11 }}>{formatFollowUpDisplay(l.followUp)} {isOverdue(l.followUp) && '(OVERDUE)'}</div>
             </div>
           ))}
           {followUps.length > 4 && <button onClick={() => setView('followups')} style={{ ...buttonBase, width: '100%', background: 'transparent', color: colors.warning, border: `1px solid ${colors.border}`, fontSize: 12 }}>View all {followUps.length} →</button>}
@@ -364,8 +374,7 @@ export function ListView({ type }) {
     dead: 'Enter to restore',
     converted: 'Enter to unconvert',
     calllog: 'Enter to edit',
-    trash: 'Enter to restore',
-    sales: 'Enter to edit'
+    trash: 'Enter to restore'
   };
 
   return (
@@ -480,7 +489,7 @@ export function ListView({ type }) {
               setSelectedIndex(idx);
               if (type === 'calllog') openModal('editCall', item);
               else if (type === 'trash') restoreFromTrash(item);
-              else if (type === 'sales') openModal('editSale', item);
+              else if (type === 'sales') openModal('editSale', item)
               else if (type !== 'emails' && type !== 'dnc' && type !== 'dead' && type !== 'converted') openModal('leadDetail', item);
             }} 
             style={{ 
@@ -565,7 +574,13 @@ export function ListView({ type }) {
                   )}
                   <div style={{ textAlign: 'right' }}>
                     {['leads', 'followups'].includes(type) && <div style={{ color: colors.success, fontSize: 13, fontWeight: '600' }}>{item.callCount || 0} calls</div>}
-                    {item.followUp && <div style={{ color: followUpStatus(item.followUp) === 'overdue' ? colors.danger : followUpStatus(item.followUp) === 'due' ? colors.warning : colors.textDim, fontSize: 11 }}> {formatFollowUpDisplay(item.followUp)}{followUpStatus(item.followUp) === 'due' ? ' (DUE)' : ''}</div>}
+                    {item.followUp && (() => {
+                      const d = new Date(item.followUp);
+                      const today = new Date();
+                      const isDueToday = d.toDateString() === today.toDateString();
+                      const color = isOverdue(item.followUp) ? colors.danger : (isDueToday ? colors.warning : colors.textDim);
+                      return <div style={{ color, fontSize: 11 }}> {formatFollowUpDisplay(item.followUp)}</div>;
+                    })()}
                   </div>
                 </div>
               </div>

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
-import { STORAGE_KEYS, loadData, saveData, generateId, isTodayOrPast, isOverdue, DEFAULT_SETTINGS, SORT_OPTIONS } from '../utils/helpers';
+import { STORAGE_KEYS, loadData, saveData, generateId, isTodayOrPast, isOverdue, DEFAULT_SETTINGS, SORT_OPTIONS, daysInMonth, weeksInMonth } from '../utils/helpers';
 
 const CRMContext = createContext(null);
 
@@ -35,7 +35,7 @@ export function CRMProvider({ children }) {
 
   const openModal = (key, value = true) => setModals(m => ({ ...m, [key]: value }));
   const closeModal = (key) => setModals(m => ({ ...m, [key]: key.includes('edit') || key.includes('Detail') || key === 'recordSale' ? null : false }));
-  const closeAllModals = () => setModals({ help: false, import: false, export: false, settings: false, privacy: false, terms: false, leadDetail: null, editLead: null, editCall: null, editGolfCourse: null, recordSale: null, editSale: null });
+  const closeAllModals = () => setModals({ help: false, import: false, export: false, settings: false, privacy: false, terms: false, leadDetail: null, editLead: null, editCall: null, editGolfCourse: null, recordSale: null });
 
   // Persist data
   useEffect(() => { saveData(STORAGE_KEYS.leads, leads); }, [leads]);
@@ -85,6 +85,55 @@ export function CRMProvider({ children }) {
       deals: weekSalesList.length
     };
   }, [sales]);
+
+
+  // Monthly quota + goals (revenue)
+  const quotaStats = useMemo(() => {
+    const ym = settings.quotaMonth || new Date().toISOString().slice(0, 7);
+    const dim = daysInMonth(ym);
+    const monthlyQuota = Number(settings.monthlyQuota || 0);
+
+    const [y, m] = ym.split('-').map(n => parseInt(n, 10));
+    const start = new Date(y, m - 1, 1, 0, 0, 0, 0);
+    const end = new Date(y, m, 1, 0, 0, 0, 0);
+
+    const monthSales = sales.filter(s => {
+      const d = new Date(s.saleDate);
+      return d >= start && d < end;
+    });
+
+    const revenueSoFar = monthSales.reduce((sum, s) => sum + (s.amount || 0), 0);
+    const remaining = Math.max(0, monthlyQuota - revenueSoFar);
+
+    // Remaining days in the selected month (excludes today when selected month is current)
+    const now = new Date();
+    const isCurrentMonth = now.getFullYear() === y && (now.getMonth() + 1) === m;
+    const dayOfMonth = isCurrentMonth ? now.getDate() : 0;
+    const remainingDays = isCurrentMonth ? Math.max(0, dim - dayOfMonth) : dim;
+
+    const dailyQuota = dim > 0 ? (monthlyQuota / dim) : 0;
+    const minimumDaily = remainingDays > 0 ? (remaining / remainingDays) : remaining;
+
+    const weekCount = weeksInMonth(ym);
+    const weeklyGoal = Number(settings.weeklyRevenueGoal || 0);
+    const dailyGoal = Number(settings.dailyRevenueGoal || 0);
+    const monthlyGoalFromWeekly = weeklyGoal * weekCount;
+
+    return {
+      month: ym,
+      daysInMonth: dim,
+      weekCount,
+      monthlyQuota,
+      dailyQuota,
+      revenueSoFar,
+      remaining,
+      remainingDays,
+      minimumDaily,
+      dailyRevenueGoal: dailyGoal,
+      weeklyRevenueGoal: weeklyGoal,
+      monthlyGoalFromWeekly
+    };
+  }, [sales, settings.quotaMonth, settings.monthlyQuota, settings.weeklyRevenueGoal, settings.dailyRevenueGoal]);
 
   // Notification
   const notify = useCallback((msg) => { setNotification(msg); setTimeout(() => setNotification(''), 2500); }, []);
@@ -275,22 +324,6 @@ export function CRMProvider({ children }) {
     return true;
   }, [notify, settings.activeGolfCourse]);
 
-  // Sale actions
-  const updateSale = useCallback((sale) => {
-    if (!sale?.id) return;
-    setSales(prev => prev.map(s => s.id === sale.id ? { ...s, ...sale } : s));
-    notify('Sale updated');
-  }, [notify]);
-
-  const deleteSale = useCallback((saleId) => {
-    const sale = sales.find(s => s.id === saleId);
-    if (!sale) return;
-    setTrash(prev => [...prev, { ...sale, type: 'sale', deletedAt: new Date().toISOString() }]);
-    setSales(prev => prev.filter(s => s.id !== saleId));
-    notify('Sale deleted');
-  }, [sales, notify]);
-
-
   const updateLead = useCallback((lead) => { setLeads(prev => prev.map(l => l.id === lead.id ? lead : l)); openModal('leadDetail', lead); closeModal('editLead'); notify('Lead updated'); }, [notify]);
   const moveToDNC = useCallback((lead) => { setLeads(prev => prev.filter(l => l.id !== lead.id)); setDncList(prev => [...prev, { ...lead, dncDate: new Date().toISOString() }]); notify(` ${lead.businessName} → DNC`); }, [notify]);
   const moveToDead = useCallback((lead) => { setLeads(prev => prev.filter(l => l.id !== lead.id)); setDeadLeads(prev => [...prev, { ...lead, deadDate: new Date().toISOString() }]); notify(` ${lead.businessName} → Dead`); }, [notify]);
@@ -395,6 +428,25 @@ export function CRMProvider({ children }) {
     return true;
   }, [notify, settings.activeGolfCourse]);
 
+  // Update an existing sale (edit modal)
+  const updateSale = useCallback((saleUpdate) => {
+    if (!saleUpdate?.id) return false;
+    setSales(prev => prev.map(s => (s.id === saleUpdate.id ? { ...s, ...saleUpdate } : s)));
+    notify('Sale updated');
+    closeModal('editSale');
+    return true;
+  }, [notify, closeModal]);
+
+  // Delete a sale (move to trash)
+  const deleteSale = useCallback((sale) => {
+    if (!sale?.id) return;
+    setSales(prev => prev.filter(s => s.id !== sale.id));
+    setTrash(prev => [{ ...sale, type: 'sale', deletedAt: new Date().toISOString() }, ...prev]);
+    notify('Sale moved to trash');
+    closeModal('editSale');
+  }, [notify, closeModal]);
+
+
   // Get current list with sorting
 
 
@@ -434,7 +486,7 @@ export function CRMProvider({ children }) {
       leads, dncList, deadLeads, convertedLeads, trash, emails, callLog, dailyStats, golfCourses, sales, settings, setSettings,
       view, setView, selectedIndex, setSelectedIndex, notification, searchQuery, setSearchQuery, analyticsRange, setAnalyticsRange, sortBy, setSortBy, filters, updateFilters, clearFilters, session, startSession, stopSession, sessionNext,
       modals, openModal, closeModal, closeAllModals,
-      todaysCalls, progress, hotLeads, activeGolfCourse, followUps, overdueCount, analytics, todaysSales, weekSales,
+      todaysCalls, progress, hotLeads, activeGolfCourse, followUps, overdueCount, analytics, todaysSales, weekSales, quotaStats,
       notify, tallyCall, quickLogEmail, addLead, updateLead, moveToDNC, moveToDead, restoreFromDNC, restoreFromDead, 
       convertLead, unconvertLead, deleteToTrash, restoreFromTrash, emptyTrash,
       deleteCall, updateCall, addGolfCourse, updateGolfCourse, deleteGolfCourse, recordSale, updateSale, deleteSale, getCurrentList, clearAllData,

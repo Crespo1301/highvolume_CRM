@@ -78,21 +78,6 @@ export const isOverdue = (dateStr) => {
   return d < new Date();
 };
 
-export const isDueToday = (dateStr) => {
-  if (!dateStr) return false;
-  const d = new Date(dateStr);
-  const now = new Date();
-  return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
-};
-
-export const followUpStatus = (dateStr) => {
-  if (!dateStr) return 'none';
-  if (isDueToday(dateStr)) return 'due';
-  if (isOverdue(dateStr)) return 'overdue';
-  return 'upcoming';
-};
-
-
 export const isTodayOrPast = (dateStr) => {
   if (!dateStr) return false;
   const d = new Date(dateStr);
@@ -101,8 +86,14 @@ export const isTodayOrPast = (dateStr) => {
 };
 
 export const DEFAULT_SETTINGS = { 
-  dailyGoal: 150, // Updated to 150 calls
-  dailySalesGoal: 2, // 2 sales per day target
+  dailyGoal: 150, // calls/day target
+  dailySalesGoal: 2, // deals/day target
+  // Revenue goals (rep-adjustable)
+  dailyRevenueGoal: 0,
+  weeklyRevenueGoal: 0,
+  // Quotas (monthly)
+  quotaMonth: '2026-03',
+  monthlyQuota: 0,
   activeGolfCourse: null 
 };
 
@@ -168,3 +159,22 @@ export const SALE_TYPES = [
   { key: 'quad', label: 'Quad Banner', price: 1580, saleCount: 4 },
   { key: 'custom', label: 'Custom Amount', price: 0, saleCount: 1 },
 ];
+
+// --- Quota helpers ---
+export const daysInMonth = (ym) => {
+  // ym: 'YYYY-MM'
+  if (!ym || ym.length < 7) return 30;
+  const [y, m] = ym.split('-').map(n => parseInt(n, 10));
+  // month is 1-12
+  return new Date(y, m, 0).getDate();
+};
+
+export const weeksInMonth = (ym) => {
+  // Simple calendar week count for the month
+  if (!ym || ym.length < 7) return 4;
+  const [y, m] = ym.split('-').map(n => parseInt(n, 10));
+  const first = new Date(y, m - 1, 1);
+  const dim = new Date(y, m, 0).getDate();
+  const offset = first.getDay(); // 0=Sun
+  return Math.ceil((dim + offset) / 7);
+};

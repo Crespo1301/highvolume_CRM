@@ -490,7 +490,7 @@ export function CRMProvider({ children }) {
       leads, dncList, deadLeads, convertedLeads, trash, emails, callLog, dailyStats, golfCourses, sales, settings, setSettings,
       view, setView, selectedIndex, setSelectedIndex, notification, searchQuery, setSearchQuery, analyticsRange, setAnalyticsRange, sortBy, setSortBy, filters, updateFilters, clearFilters, session, startSession, stopSession, sessionNext,
       modals, openModal, closeModal, closeAllModals,
-      todaysCalls, progress, hotLeads, activeGolfCourse, followUps, overdueCount, analytics, todaysSales, weekSales, quotaStats,
+      todaysCalls, progress, hotLeads, activeGolfCourse, followUps, overdueCount, analytics, todaysSales, weekSales,
       notify, tallyCall, quickLogEmail, addLead, updateLead, moveToDNC, moveToDead, restoreFromDNC, restoreFromDead, 
       convertLead, unconvertLead, deleteToTrash, restoreFromTrash, emptyTrash,
       deleteCall, updateCall, addGolfCourse, updateGolfCourse, deleteGolfCourse, recordSale, updateSale, deleteSale, getCurrentList, clearAllData,

@@ -89,6 +89,57 @@ export function CRMProvider({ children }) {
   // Notification
   const notify = useCallback((msg) => { setNotification(msg); setTimeout(() => setNotification(''), 2500); }, []);
 
+
+  // Quota & revenue goals (monthly)
+  const quotaStats = useMemo(() => {
+    const now = new Date();
+    const ym = (settings?.quotaMonth || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`);
+    const [yyStr, mmStr] = String(ym).split('-');
+    const year = parseInt(yyStr, 10);
+    const monthIndex = Math.max(0, Math.min(11, (parseInt(mmStr, 10) || (now.getMonth() + 1)) - 1));
+
+    const monthStart = new Date(year, monthIndex, 1, 0, 0, 0, 0);
+    const monthEnd = new Date(year, monthIndex + 1, 1, 0, 0, 0, 0);
+    const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+
+    const monthSales = (sales || []).filter(s => {
+      const d = new Date(s.saleDate);
+      return d >= monthStart && d < monthEnd;
+    });
+
+    const revenueSoFar = monthSales.reduce((sum, s) => sum + (Number(s.amount) || 0), 0);
+    const quota = Number(settings?.monthlyQuota) || 0;
+    const remaining = Math.max(0, quota - revenueSoFar);
+
+    const today = now;
+    const isSelectedMonthCurrent = (today.getFullYear() === year && today.getMonth() === monthIndex);
+    const dayOfMonth = isSelectedMonthCurrent ? today.getDate() : 1;
+
+    // Remaining days after today (matches: day 10 of 30 -> 20 days remaining)
+    const remainingDays = Math.max(0, daysInMonth - dayOfMonth);
+
+    const dailyQuota = quota > 0 ? quota / daysInMonth : 0;
+    const minimumPerDay = remainingDays > 0 ? (remaining / remainingDays) : remaining; // last day fallback
+
+    // Monthly goal derived from weekly goal * number of weeks in month (rounded up)
+    const weeksInMonth = Math.ceil(daysInMonth / 7);
+    const monthlyGoalFromWeekly = (Number(settings?.weeklyRevenueGoal) || 0) * weeksInMonth;
+
+    return {
+      month: ym,
+      daysInMonth,
+      weeksInMonth,
+      quota,
+      revenueSoFar,
+      remaining,
+      remainingDays,
+      dailyQuota,
+      minimumPerDay,
+      dailyRevenueGoal: Number(settings?.dailyRevenueGoal) || 0,
+      weeklyRevenueGoal: Number(settings?.weeklyRevenueGoal) || 0,
+      monthlyGoalFromWeekly
+    };
+  }, [settings?.quotaMonth, settings?.monthlyQuota, settings?.dailyRevenueGoal, settings?.weeklyRevenueGoal, sales]);
   // Filters
   const updateFilters = useCallback((patch) => setFilters(prev => ({ ...prev, ...patch })), []);
   const clearFilters = useCallback(() => setFilters({ golfCourseId: 'all', industry: 'all', priority: 'all', source: 'all', outcome: 'all', saleType: 'all' }), []);
@@ -357,9 +408,9 @@ export function CRMProvider({ children }) {
   const updateCall = useCallback((call) => { setCallLog(prev => prev.map(c => c.id === call.id ? call : c)); closeModal('editCall'); notify('Call updated'); }, [notify]);
 
   // Golf course actions
-  const addGolfCourse = useCallback((data) => { if (!data.name) { notify('Name required'); return false; } setGolfCourses(prev => [...prev, { id: generateId(), ...data, createdAt: new Date().toISOString() }]); notify(' Course added'); return true; }, [notify]);
-  const updateGolfCourse = useCallback((course) => { setGolfCourses(prev => prev.map(gc => gc.id === course.id ? course : gc)); closeModal('editGolfCourse'); notify('Course updated'); }, [notify]);
-  const deleteGolfCourse = useCallback((id) => { if (confirm('Delete course?')) { setGolfCourses(prev => prev.filter(gc => gc.id !== id)); if (settings.activeGolfCourse === id) setSettings(prev => ({ ...prev, activeGolfCourse: null })); notify('Course deleted'); } }, [settings.activeGolfCourse, notify]);
+  const addGolfCourse = useCallback((data) => { if (!data.name) { notify('Name required'); return false; } setGolfCourses(prev => [...prev, { id: generateId(), ...data, createdAt: new Date().toISOString() }]); notify(' Market added'); return true; }, [notify]);
+  const updateGolfCourse = useCallback((course) => { setGolfCourses(prev => prev.map(gc => gc.id === course.id ? course : gc)); closeModal('editGolfCourse'); notify('Market updated'); }, [notify]);
+  const deleteGolfCourse = useCallback((id) => { if (confirm('Delete market?')) { setGolfCourses(prev => prev.filter(gc => gc.id !== id)); if (settings.activeGolfCourse === id) setSettings(prev => ({ ...prev, activeGolfCourse: null })); notify('Market deleted'); } }, [settings.activeGolfCourse, notify]);
 
   // Record a sale
   const recordSale = useCallback((saleData) => {

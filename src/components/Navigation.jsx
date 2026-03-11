@@ -16,7 +16,7 @@ export function Navigation() {
     { key: 'dead', label: 'Dead', shortcut: '9', count: deadLeads.length, icon: <IconSkull size={16} /> },
     { key: 'calllog', label: 'Calls', shortcut: 'C', count: callLog.length, icon: <IconPhone size={16} /> },
     { key: 'sales', label: 'Sales', shortcut: '$', count: sales.length },
-    { key: 'golfcourses', label: 'Courses', shortcut: 'G', count: golfCourses.length, icon: <IconGolf size={16} /> },
+    { key: 'golfcourses', label: 'Markets', shortcut: 'G', count: golfCourses.length, icon: <IconGolf size={16} /> },
     { key: 'trash', label: 'Trash', shortcut: 'T', count: trash.length },
     { key: 'analytics', label: 'Analytics', shortcut: 'A' },
     { key: 'emails', label: 'Emails', shortcut: '-', count: emails.length },

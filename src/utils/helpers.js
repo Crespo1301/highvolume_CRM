@@ -65,10 +65,11 @@ export const formatDateDisplay = (dateStr) => {
 };
 
 // Parse date input without timezone shift
-export const parseDateInput = (dateStr) => {
+export const parseDateInput = (dateStr, timeStr = '') => {
   if (!dateStr) return '';
-  // Input is YYYY-MM-DD, store as noon local time to avoid day shifts
-  return `${dateStr}T12:00:00`;
+  const cleanTime = (timeStr || '').trim();
+  if (!cleanTime) return `${dateStr}T12:00:00`;
+  return `${dateStr}T${cleanTime.length === 5 ? cleanTime + ':00' : cleanTime}`;
 };
 
 export const isOverdue = (dateStr) => {
@@ -97,37 +98,97 @@ export const DEFAULT_SETTINGS = {
   activeGolfCourse: null 
 };
 
+
+export const isDueToday = (dateStr) => {
+  if (!dateStr) return false;
+  const d = new Date(dateStr);
+  const now = new Date();
+  return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+};
+
+/**
+ * Follow-up status helper
+ * - 'overdue'  : date is before today
+ * - 'due'      : date is today
+ * - 'upcoming' : date is in the future
+ */
+export const followUpStatus = (dateStr) => {
+  if (!dateStr) return 'upcoming';
+  if (isOverdue(dateStr)) return 'overdue';
+  if (isDueToday(dateStr)) return 'due';
+  return 'upcoming';
+};
+
+export const WEBSITE_STATUS_OPTIONS = [
+  'none',
+  'facebookOnly',
+  'outdated',
+  'good'
+];
+
+export const scoreLead = (lead = {}) => {
+  let score = 0;
+  const status = lead.websiteStatus || '';
+  if (status === 'none') score += 5;
+  else if (status === 'facebookOnly') score += 4;
+  else if (status === 'outdated') score += 3;
+  if (lead.city) score += 2;
+  if (!lead.websiteUrl && !lead.website) score += 2;
+  return score;
+};
+
+export const classifyPriorityFromScore = (score = 0) => {
+  if (score >= 7) return 'hot';
+  if (score >= 4) return 'normal';
+  return 'low';
+};
+
+export const generateWebsiteAudit = (lead = {}) => {
+  const status = lead.websiteStatus || (lead.websiteUrl || lead.website ? 'outdated' : 'none');
+  const templates = {
+    none: { mobileFriendly: 'Missing', loadSpeed: 'Missing', contactForm: 'Missing', googleMap: 'Missing', servicesPage: 'Missing', modernDesign: 'Missing', callToAction: 'Missing' },
+    facebookOnly: { mobileFriendly: 'Needs Improvement', loadSpeed: 'Needs Improvement', contactForm: 'Missing', googleMap: 'Missing', servicesPage: 'Missing', modernDesign: 'Needs Improvement', callToAction: 'Missing' },
+    outdated: { mobileFriendly: 'Needs Improvement', loadSpeed: 'Needs Improvement', contactForm: 'Needs Improvement', googleMap: 'Needs Improvement', servicesPage: 'Needs Improvement', modernDesign: 'Needs Improvement', callToAction: 'Needs Improvement' },
+    good: { mobileFriendly: 'Good', loadSpeed: 'Good', contactForm: 'Good', googleMap: 'Good', servicesPage: 'Good', modernDesign: 'Good', callToAction: 'Good' }
+  };
+  return templates[status] || templates.outdated;
+};
+
 // Industry categories
 export const INDUSTRIES = [
+  'Contractor / Home Services',
+  'Landscaping',
+  'Plumbing',
+  'Electrical',
+  'Cleaning Company',
+  'Construction',
+  'Accounting / Bookkeeping',
   'Restaurant',
-  'Bar / Nightclub',
-  'Auto Detail Service',
-  'Law Firm',
-  'Realtor / Real Estate',
   'Medical / Healthcare',
   'Dental Office',
+  'Legal Services',
+  'Real Estate',
+  'Insurance',
   'Fitness / Gym',
   'Salon / Spa',
   'Retail Store',
   'Professional Services',
-  'Construction / Trades',
-  'Financial Services',
-  'Insurance',
-  'Tech / Software',
+  'Auto Services',
+  'Marketing / Agency',
   'Other'
 ];
 
 // Lead sources
 export const SOURCES = [
   'Google Maps',
+  'Facebook',
+  'Instagram',
+  'Walk-In',
   'Referral',
   'Cold Call',
   'Website',
   'Social Media',
-  'Trade Show',
   'Yelp',
-  'Yellow Pages',
-  'Door to Door',
   'Other'
 ];
 

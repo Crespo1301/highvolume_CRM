@@ -155,9 +155,10 @@ export function IconFlag(props) {
 export function IconGolf(props) {
   return (
     <Svg {...props}>
-      <path d="M12 2v20" />
-      <path d="M12 2l8 4-8 4" />
-      <path d="M6 22h12" />
+      <path d="M3 9h18v11H3z" />
+      <path d="M3 9L5 4h14l2 5" />
+      <path d="M8 13h8" />
+      <path d="M8 17h8" />
     </Svg>
   );
 }

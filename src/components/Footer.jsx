@@ -26,7 +26,7 @@ export function Footer() {
             <Shortcut k="+" label="Add Lead" />
             <Shortcut k="S" label="Settings" />
             <Shortcut k="F" label="Follow-ups" />
-            <Shortcut k="G" label="Courses" />
+            <Shortcut k="G" label="Markets" />
             <Shortcut k="T" label="Trash" />
             <Shortcut k="I" label="Import" />
             <Shortcut k="X" label="Export" last />

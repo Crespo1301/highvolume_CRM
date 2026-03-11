@@ -59,7 +59,7 @@ export function HelpModal() {
   if (!modals.help) return null;
   const shortcuts = [
     ['Navigation', [['1', 'Dashboard'], ['3', 'Leads'], ['7', 'DNC'], ['9', 'Dead'], ['V', 'Converted'], ['F', 'Follow-ups'], ['C', 'Calls'], ['$', 'Sales']]],
-    ['More Nav', [['G', 'Courses'], ['T', 'Trash'], ['A', 'Analytics'], ['-', 'Emails']]],
+    ['More Nav', [['G', 'Markets'], ['T', 'Trash'], ['A', 'Analytics'], ['-', 'Emails']]],
     ['Actions', [['SPACE', 'Tally Call'], ['E', 'Quick Email'], ['Enter', 'View/Edit'], ['←', 'DNC'], ['→', 'Dead'], ['.', 'Delete'], ['+', 'Add Lead']]],
     ['Data', [['I', 'Import'], ['X', 'Export'], ['S', 'Settings'], ['/', 'Help'], ['Esc', 'Close']]]
   ];
@@ -101,12 +101,32 @@ export function SettingsModal() {
           <input type="number" value={settings.dailySalesGoal || 2} onChange={e => setSettings(p => ({ ...p, dailySalesGoal: parseInt(e.target.value) || 2 }))} style={inputBase} />
         </div>
         <div style={{ marginBottom: 20 }}>
-          <label style={{ display: 'block', color: colors.textMuted, marginBottom: 6, fontSize: 12 }}>Active Golf Course</label>
+          <label style={{ display: 'block', color: colors.textMuted, marginBottom: 6, fontSize: 12 }}>Active Market</label>
           <select value={settings.activeGolfCourse || ''} onChange={e => setSettings(p => ({ ...p, activeGolfCourse: e.target.value || null }))} style={inputBase}>
             <option value="">None</option>
             {golfCourses.map(gc => <option key={gc.id} value={gc.id}>{gc.name}</option>)}
           </select>
         </div>
+        {/* Revenue goals */}
+        <div style={{ marginBottom: 16 }}>
+          <label style={{ display: 'block', color: colors.textMuted, marginBottom: 6, fontSize: 12 }}>Daily Revenue Goal ($)</label>
+          <input type="number" value={settings.dailyRevenueGoal || 0} onChange={e => setSettings(p => ({ ...p, dailyRevenueGoal: parseFloat(e.target.value) || 0 }))} style={inputBase} />
+        </div>
+        <div style={{ marginBottom: 16 }}>
+          <label style={{ display: 'block', color: colors.textMuted, marginBottom: 6, fontSize: 12 }}>Weekly Revenue Goal ($)</label>
+          <input type="number" value={settings.weeklyRevenueGoal || 0} onChange={e => setSettings(p => ({ ...p, weeklyRevenueGoal: parseFloat(e.target.value) || 0 }))} style={inputBase} />
+        </div>
+
+        {/* Quotas */}
+        <div style={{ marginBottom: 16 }}>
+          <label style={{ display: 'block', color: colors.textMuted, marginBottom: 6, fontSize: 12 }}>Quota Month</label>
+          <input type="month" value={settings.quotaMonth || ''} onChange={e => setSettings(p => ({ ...p, quotaMonth: e.target.value }))} style={inputBase} />
+        </div>
+        <div style={{ marginBottom: 16 }}>
+          <label style={{ display: 'block', color: colors.textMuted, marginBottom: 6, fontSize: 12 }}>Monthly Quota ($)</label>
+          <input type="number" value={settings.monthlyQuota || 0} onChange={e => setSettings(p => ({ ...p, monthlyQuota: parseFloat(e.target.value) || 0 }))} style={inputBase} />
+        </div>
+
         <button onClick={clearAllData} style={{ ...buttonBase, width: '100%', background: colors.danger, color: '#fff', marginBottom: 10 }}>️ Clear All Data</button>
         <button onClick={() => closeModal('settings')} style={{ ...buttonBase, width: '100%', background: colors.bgCard, color: colors.text }}>Close</button>
       </ModalBox>
@@ -392,66 +412,72 @@ export function LeadDetailModal() {
 export function EditLeadModal() {
   const { modals, closeModal, updateLead, golfCourses } = useCRM();
   const [form, setForm] = useState(null);
-  React.useEffect(() => { if (modals.editLead) setForm({ ...modals.editLead }); }, [modals.editLead]);
-  if (!form) return null;
+
+  React.useEffect(() => {
+    if (!modals.editLead) { setForm(null); return; }
+    setForm({ ...modals.editLead });
+  }, [modals.editLead]);
+
+  if (!modals.editLead || !form) return null;
+
+  const onClose = () => { setForm(null); closeModal('editLead'); };
 
   return (
-    <Modal onClose={() => closeModal('editLead')}>
+    <Modal onClose={onClose}>
       <ModalBox maxWidth={700}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-          <h2 style={{ color: colors.text, fontSize: 18 }}>✏️ Edit Lead</h2>
-          <button onClick={() => closeModal('editLead')} style={{ ...buttonBase, background: colors.bgCard, color: colors.textMuted }}><IconX size={16} /></button>
+          <h2 style={{ color: colors.text, fontSize: 18 }}>Edit Lead</h2>
+          <button onClick={onClose} style={{ ...buttonBase, background: colors.bgCard, color: colors.textMuted }}><IconX size={16} /></button>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
           {[['businessName', 'Business Name', 2], ['contactName', 'Contact', 1], ['phone', 'Phone', 1], ['email', 'Email', 1], ['website', 'Website', 1], ['address', 'Address', 2]].map(([key, label, span]) => (
             <div key={key} style={{ gridColumn: `span ${span}` }}>
               <label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>{label}</label>
-              <input value={form[key] || ''} onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))} style={inputBase} />
+              <input value={form[key] || ''} onChange={e => setForm(p => ({ ...p, [key]: e.target.value }))} style={inputBase} />
             </div>
           ))}
-          <div>
+
+          <div style={{ gridColumn: 'span 1' }}>
             <label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>Industry</label>
-            <select value={form.industry || ''} onChange={e => setForm(f => ({ ...f, industry: e.target.value }))} style={inputBase}>
+            <select value={form.industry || ''} onChange={e => setForm(p => ({ ...p, industry: e.target.value }))} style={inputBase}>
               <option value="">Select...</option>
-              {INDUSTRIES.map(ind => <option key={ind} value={ind}>{ind}</option>)}
+              {INDUSTRIES.map(i => <option key={i} value={i}>{i}</option>)}
             </select>
           </div>
-          <div>
-            <label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>Source</label>
-            <select value={form.source || ''} onChange={e => setForm(f => ({ ...f, source: e.target.value }))} style={inputBase}>
-              <option value="">Select...</option>
-              {SOURCES.map(src => <option key={src} value={src}>{src}</option>)}
-            </select>
-          </div>
-          <DateInput value={form.followUp} onChange={val => setForm(f => ({ ...f, followUp: val }))} label="Follow-up" />
-          <div>
-            <label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>Priority</label>
-            <select value={form.priority || 'normal'} onChange={e => setForm(f => ({ ...f, priority: e.target.value }))} style={inputBase}>
-              <option value="normal">Normal</option>
-              <option value="hot">🔥 Hot</option>
-              <option value="low">Low</option>
-            </select>
-          </div>
-          <div>
-            <label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>Golf Course</label>
-            <select value={form.golfCourseId || ''} onChange={e => setForm(f => ({ ...f, golfCourseId: e.target.value }))} style={inputBase}>
+
+          <div style={{ gridColumn: 'span 1' }}>
+            <label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>Market</label>
+            <select value={form.golfCourseId || ''} onChange={e => setForm(p => ({ ...p, golfCourseId: e.target.value || null }))} style={inputBase}>
               <option value="">None</option>
               {golfCourses.map(gc => <option key={gc.id} value={gc.id}>{gc.name}</option>)}
             </select>
           </div>
+
+          <div style={{ gridColumn: 'span 1' }}>
+            <label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>Follow-up Date</label>
+            <input type="date" value={formatDateForInput(form.followUp)} onChange={e => setForm(p => ({ ...p, followUp: parseDateInput(e.target.value, (p.followUpTime || '')) }))} style={inputBase} />
+          </div>
+
+          <div style={{ gridColumn: 'span 1' }}>
+            <label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>Follow-up Time</label>
+            <input type="time" value={form.followUpTime || ''} onChange={e => setForm(p => ({ ...p, followUpTime: e.target.value, followUp: parseDateInput(formatDateForInput(p.followUp), e.target.value) }))} style={inputBase} />
+          </div>
+
           <div style={{ gridColumn: 'span 2' }}>
             <label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>Notes</label>
-            <textarea value={form.notes || ''} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={3} style={{ ...inputBase, resize: 'vertical' }} />
+            <textarea value={form.notes || ''} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} style={{ ...inputBase, minHeight: 90 }} />
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
-          <button onClick={() => updateLead(form)} style={{ ...buttonBase, flex: 1, background: colors.success, color: '#fff' }}>Save</button>
-          <button onClick={() => closeModal('editLead')} style={{ ...buttonBase, background: colors.bgCard, color: colors.text }}>Cancel</button>
+
+        <div style={{ display: 'flex', gap: 10, marginTop: 18 }}>
+          <button onClick={onClose} style={{ ...buttonBase, flex: 1, background: colors.bgCard, color: colors.text }}>Cancel</button>
+          <button onClick={() => { updateLead(form); onClose(); }} style={{ ...buttonBase, flex: 1, background: colors.primary, color: '#fff' }}>Save</button>
         </div>
       </ModalBox>
     </Modal>
   );
 }
+
 
 
 // Edit Sale Modal
@@ -538,7 +564,7 @@ export function EditSaleModal() {
           </div>
 
           <div>
-            <label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>Golf Course</label>
+            <label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>Market</label>
             <select
               value={form.golfCourseId || ''}
               onChange={e => setForm(f => ({ ...f, golfCourseId: e.target.value }))}
@@ -629,7 +655,7 @@ export function EditGolfCourseModal() {
   return (
     <Modal onClose={() => closeModal('editGolfCourse')}>
       <ModalBox maxWidth={550}>
-        <h2 style={{ color: colors.accent, marginBottom: 20, fontSize: 18 }}>⛳ Edit Golf Course</h2>
+        <h2 style={{ color: colors.accent, marginBottom: 20, fontSize: 18 }}>⛳ Edit Market</h2>
         <div style={{ display: 'grid', gap: 14 }}>
           {[['name', 'Name'], ['address', 'Address'], ['phone', 'Phone'], ['contactName', 'Contact'], ['email', 'Email'], ['region', 'Region']].map(([key, label]) => (
             <div key={key}><label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>{label}</label><input value={form[key] || ''} onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))} style={inputBase} /></div>

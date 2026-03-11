@@ -1,7 +1,7 @@
 import React from 'react';
 import { useCRM } from '../context/CRMContext';
 import { colors, buttonBase } from '../utils/theme.jsx';
-import { IconCalendar, IconGolf } from './Icons';
+import { IconCalendar, IconTarget } from './Icons';
 
 export function Header() {
   const {todaysCalls,progress,settings,activeGolfCourse,followUps,overdueCount,setView,view} = useCRM();
@@ -18,7 +18,7 @@ export function Header() {
             </span>
             {activeGolfCourse && (
               <span style={{ color: colors.accent, fontSize: 13, marginLeft: 12, fontWeight: '500', WebkitTextFillColor: colors.accent }}>
-                <IconGolf size={14} style={{ marginRight: 6 }} /> {activeGolfCourse.name}
+                <IconTarget size={14} style={{ marginRight: 6 }} /> {activeGolfCourse.name}
               </span>
             )}
           </h1>

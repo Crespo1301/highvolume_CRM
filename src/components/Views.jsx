@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useCRM } from '../context/CRMContext';
 import { colors, buttonBase, inputBase } from '../utils/theme.jsx';
-import { formatDate, formatDateTime, formatFollowUpDisplay, formatDateForInput, formatDateDisplay, isOverdue, INDUSTRIES, SOURCES, parseDateInput, SORT_OPTIONS, SALE_TYPES } from '../utils/helpers';
+import { formatDate, formatDateTime, formatFollowUpDisplay, formatDateForInput, formatDateDisplay, isOverdue, isDueToday, followUpStatus, INDUSTRIES, SOURCES, parseDateInput, SORT_OPTIONS, SALE_TYPES } from '../utils/helpers';
 import { IconPlay, IconStop, IconChevronRight, IconPhone, IconCalendar, IconCheck, IconBan, IconSkull, IconFlag } from './Icons';
 
 // Card component
@@ -64,7 +64,7 @@ function Pill({ label }) {
 }
 
 export function Dashboard() {
-  const { todaysCalls, settings, progress, leads, hotLeads, followUps, analytics, tallyCall, setView, openModal, activeGolfCourse, todaysSales, weekSales, convertedLeads } = useCRM();
+  const { todaysCalls, settings, progress, leads, hotLeads, followUps, analytics, tallyCall, setView, openModal, activeGolfCourse, todaysSales, weekSales, convertedLeads, quotaStats } = useCRM();
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
@@ -79,6 +79,20 @@ export function Dashboard() {
         <Stat label="Revenue" value={`$${todaysSales.revenue.toLocaleString()}`} color={colors.success} />
         <Stat label="Goal" value={`${settings.dailySalesGoal}/day`} />
       </Card>
+
+      <Card title=" Quota" color={colors.primary}>
+        <Stat label="Month" value={quotaStats?.month || ''} />
+        <Stat label="Quota" value={`$${(quotaStats?.quota || 0).toLocaleString()}`} />
+        <Stat label="So far" value={`$${(quotaStats?.revenueSoFar || 0).toLocaleString()}`} color={colors.success} />
+        <Stat label="Remaining" value={`$${(quotaStats?.remaining || 0).toLocaleString()}`} color={(quotaStats?.remaining || 0) > 0 ? colors.warning : colors.success} />
+        <div style={{ marginTop: 10, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+          <div style={{ fontSize: 11, color: colors.textMuted }}>Daily quota</div>
+          <div style={{ textAlign: 'right', fontSize: 11, color: colors.text }}>{`$${Math.ceil(quotaStats?.dailyQuota || 0).toLocaleString()}`}</div>
+          <div style={{ fontSize: 11, color: colors.textMuted }}>Min/day</div>
+          <div style={{ textAlign: 'right', fontSize: 11, color: colors.text }}>{`$${Math.ceil(quotaStats?.minimumPerDay || 0).toLocaleString()}`}</div>
+        </div>
+      </Card>
+
 
       <Card title=" This Week" color={colors.accent}>
         <Stat label="Sales" value={weekSales.count} color={colors.accent} />
@@ -119,7 +133,7 @@ export function Dashboard() {
           {followUps.slice(0, 4).map(l => (
             <div key={l.id} onClick={() => openModal('leadDetail', l)} style={{ padding: 12, background: colors.bgLight, borderRadius: 8, marginBottom: 8, cursor: 'pointer', borderLeft: `3px solid ${isOverdue(l.followUp) ? colors.danger : colors.warning}` }}>
               <div style={{ fontWeight: '600', fontSize: 13 }}>{l.businessName}</div>
-              <div style={{ color: isOverdue(l.followUp) ? colors.danger : colors.textMuted, fontSize: 11 }}>{formatFollowUpDisplay(l.followUp)} {isOverdue(l.followUp) && '(OVERDUE)'}</div>
+              <div style={{ color: isOverdue(l.followUp) ? colors.danger : colors.textMuted, fontSize: 11 }}>{formatFollowUpDisplay(l.followUp)} {followUpStatus(l.followUp) === 'overdue' && '(OVERDUE)'} {followUpStatus(l.followUp) === 'due' && '(DUE)'}</div>
             </div>
           ))}
           {followUps.length > 4 && <button onClick={() => setView('followups')} style={{ ...buttonBase, width: '100%', background: 'transparent', color: colors.warning, border: `1px solid ${colors.border}`, fontSize: 12 }}>View all {followUps.length} →</button>}
@@ -127,7 +141,7 @@ export function Dashboard() {
       )}
 
       {activeGolfCourse && (
-        <Card title=" Active Course" color={colors.accent} borderColor={colors.accent}>
+        <Card title=" Active Market" color={colors.accent} borderColor={colors.accent}>
           <div style={{ fontWeight: '600', fontSize: 16, marginBottom: 8 }}>{activeGolfCourse.name}</div>
           {activeGolfCourse.address && <div style={{ color: colors.textMuted, fontSize: 13 }}>{activeGolfCourse.address}</div>}
           {activeGolfCourse.phone && <div style={{ color: colors.textMuted, fontSize: 13 }}>{activeGolfCourse.phone}</div>}
@@ -256,14 +270,14 @@ const FilterHeader = ({ type }) => {
 
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
-      {/* Golf course filter */}
+      {/* market filter */}
       <select
         value={filters.golfCourseId || 'all'}
         onChange={e => updateFilters({ golfCourseId: e.target.value })}
         style={{ ...inputBase, width: 'auto', padding: '4px 8px', fontSize: 11, background: colors.bg }}
-        title="Filter by golf course"
+        title="Filter by market"
       >
-        <option value="all">All Courses</option>
+        <option value="all">All Markets</option>
         <option value="unassigned">Unassigned</option>
         {golfCourses.map(gc => <option key={gc.id} value={gc.id}>{gc.name}</option>)}
       </select>
@@ -354,7 +368,7 @@ export function ListView({ type }) {
     sales: 'Sales',
     trash: 'Trash',
     emails: 'Email Log',
-    golfcourses: 'Golf Courses'
+    golfcourses: 'Markets'
   };
   
   const hints = { 
@@ -565,7 +579,7 @@ export function ListView({ type }) {
                   )}
                   <div style={{ textAlign: 'right' }}>
                     {['leads', 'followups'].includes(type) && <div style={{ color: colors.success, fontSize: 13, fontWeight: '600' }}>{item.callCount || 0} calls</div>}
-                    {item.followUp && <div style={{ color: isOverdue(item.followUp) ? colors.danger : colors.textDim, fontSize: 11 }}> {formatFollowUpDisplay(item.followUp)}</div>}
+                    {item.followUp && <div style={{ color: followUpStatus(item.followUp) === 'overdue' ? colors.danger : followUpStatus(item.followUp) === 'due' ? colors.warning : colors.textDim, fontSize: 11 }}> {formatFollowUpDisplay(item.followUp)}</div>}
                   </div>
                 </div>
               </div>
@@ -578,7 +592,7 @@ export function ListView({ type }) {
   );
 }
 
-// Golf Courses View
+// Markets View
 export function GolfCoursesView() {
   const { golfCourses, settings, setSettings, openModal, addGolfCourse, notify, selectedIndex, setSelectedIndex } = useCRM();
   const [form, setForm] = useState({ name: '', address: '', phone: '', contactName: '', email: '', region: '', notes: '' });
@@ -590,18 +604,18 @@ export function GolfCoursesView() {
   return (
     <div style={{ display: 'grid', gap: 16 }}>
       <div style={{ background: colors.bgCard, borderRadius: 12, padding: 20, border: `1px solid ${colors.accent}` }}>
-        <h3 style={{ color: colors.accent, marginBottom: 16, fontSize: 14, fontWeight: '600' }}> Add Golf Course</h3>
+        <h3 style={{ color: colors.accent, marginBottom: 16, fontSize: 14, fontWeight: '600' }}> Add Market</h3>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
           {['name', 'address', 'phone', 'contactName', 'email', 'region'].map(key => (
             <input key={key} placeholder={key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1') + (key === 'name' ? ' *' : '')} value={form[key]} onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))} style={inputBase} />
           ))}
         </div>
-        <button onClick={handleAdd} style={{ ...buttonBase, marginTop: 12, background: colors.accent, color: '#fff' }}>Add Course</button>
+        <button onClick={handleAdd} style={{ ...buttonBase, marginTop: 12, background: colors.accent, color: '#fff' }}>Add Market</button>
       </div>
 
       <div style={{ background: colors.bgCard, borderRadius: 12, border: `1px solid ${colors.border}`, overflow: 'hidden' }}>
         <div style={{ padding: '14px 20px', background: colors.bgLight, borderBottom: `1px solid ${colors.border}` }}>
-          <h2 style={{ fontSize: 15, color: colors.text, fontWeight: '600' }}> Golf Courses ({golfCourses.length})</h2>
+          <h2 style={{ fontSize: 15, color: colors.text, fontWeight: '600' }}> Markets ({golfCourses.length})</h2>
         </div>
         <div style={{ maxHeight: 400, overflowY: 'auto' }}>
           {golfCourses.map((gc, idx) => (
@@ -611,13 +625,13 @@ export function GolfCoursesView() {
                   <div style={{ fontWeight: '600', fontSize: 14 }}>{gc.name} {settings.activeGolfCourse === gc.id && <span style={{ color: colors.accent, fontSize: 11 }}>✓ Active</span>}</div>
                   <div style={{ color: colors.textMuted, fontSize: 12 }}>{gc.address} {gc.region && `• ${gc.region}`}</div>
                 </div>
-                <button onClick={e => { e.stopPropagation(); setSettings(p => ({ ...p, activeGolfCourse: gc.id })); notify(` ${gc.name} set as active`); }} style={{ ...buttonBase, padding: '6px 12px', background: settings.activeGolfCourse === gc.id ? colors.bgLight : colors.accent, color: settings.activeGolfCourse === gc.id ? colors.textMuted : '#fff', fontSize: 11 }}>
+                <button onClick={e => { e.stopPropagation(); setSettings(p => ({ ...p, activeGolfCourse: gc.id })); notify(` ${gc.name} set as active market`); }} style={{ ...buttonBase, padding: '6px 12px', background: settings.activeGolfCourse === gc.id ? colors.bgLight : colors.accent, color: settings.activeGolfCourse === gc.id ? colors.textMuted : '#fff', fontSize: 11 }}>
                   {settings.activeGolfCourse === gc.id ? 'Active' : 'Set Active'}
                 </button>
               </div>
             </div>
           ))}
-          {golfCourses.length === 0 && <div style={{ padding: 40, textAlign: 'center', color: colors.textDim }}>No courses yet</div>}
+          {golfCourses.length === 0 && <div style={{ padding: 40, textAlign: 'center', color: colors.textDim }}>No markets yet</div>}
         </div>
       </div>
     </div>

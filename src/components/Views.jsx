@@ -700,7 +700,7 @@ export function AddLeadForm() {
         </div>
         
         <div>
-          <label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>Golf Course {settings.activeGolfCourse && '(default: active)'}</label>
+          <label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>Market {settings.activeGolfCourse && '(default: active)'}</label>
           <select value={form.golfCourseId} onChange={e => setForm(f => ({ ...f, golfCourseId: e.target.value }))} style={inputBase}>
             <option value="">None</option>
             {golfCourses.map(gc => <option key={gc.id} value={gc.id}>{gc.name} {gc.id === settings.activeGolfCourse ? '✓' : ''}</option>)}

@@ -32,12 +32,12 @@ export function CRMProvider({ children }) {
   // Modal state
   const [modals, setModals] = useState({
     help: false, import: false, export: false, settings: false, privacy: false, terms: false,
-    leadDetail: null, editLead: null, editSale: null, editCall: null, editGolfCourse: null, recordSale: null
+    leadDetail: null, editLead: null, editSale: null, editCall: null, editGolfCourse: null, recordSale: null, composeEmail: null
   });
 
   const openModal = (key, value = true) => setModals(m => ({ ...m, [key]: value }));
-  const closeModal = (key) => setModals(m => ({ ...m, [key]: key.includes('edit') || key.includes('Detail') || key === 'recordSale' ? null : false }));
-  const closeAllModals = () => setModals({ help: false, import: false, export: false, settings: false, privacy: false, terms: false, leadDetail: null, editLead: null, editSale: null, editCall: null, editGolfCourse: null, recordSale: null });
+  const closeModal = (key) => setModals(m => ({ ...m, [key]: key.includes('edit') || key.includes('Detail') || key === 'recordSale' || key === 'composeEmail' ? null : false }));
+  const closeAllModals = () => setModals({ help: false, import: false, export: false, settings: false, privacy: false, terms: false, leadDetail: null, editLead: null, editSale: null, editCall: null, editGolfCourse: null, recordSale: null, composeEmail: null });
 
   // Persist data
   useEffect(() => { saveData(STORAGE_KEYS.leads, leads); }, [leads]);
@@ -336,21 +336,48 @@ export function CRMProvider({ children }) {
     setSelectedIndex(nextIdx);
   }, [getListForView, notify, persistSession, session, setSelectedIndex, view]);
 
-  // Quick email log (just mark that we emailed them)
-  const quickLogEmail = useCallback((lead) => {
-    const now = new Date().toISOString();
+  const openEmailComposer = useCallback((lead) => {
+    if (!lead) return false;
+    if (!lead.email) {
+      notify(`No email found for ${lead.businessName || 'this lead'}`);
+      return false;
+    }
+
     const draft = generateEmailDraft(lead);
-    setEmails(prev => [{ 
-      id: generateId(), 
-      leadId: lead.id, 
-      leadName: lead.businessName,
+    openModal('composeEmail', {
+      id: generateId(),
+      leadId: lead.id,
+      leadName: lead.businessName || '',
       to: lead.email || '',
       subject: draft.subject,
       body: draft.body,
+      createdAt: new Date().toISOString()
+    });
+    return true;
+  }, [notify]);
+
+  const quickLogEmail = useCallback((draft) => {
+    if (!draft?.leadId || !draft?.to) {
+      notify('Email draft is missing lead or recipient details');
+      return false;
+    }
+
+    const now = new Date().toISOString();
+    const emailEntry = {
+      id: generateId(),
+      leadId: draft.leadId,
+      leadName: draft.leadName || draft.to,
+      to: draft.to,
+      subject: draft.subject || '',
+      body: draft.body || '',
       sentAt: now
-    }, ...prev]);
-    setLeads(prev => prev.map(l => l.id === lead.id ? { ...l, lastEmailed: now, emailCount: (l.emailCount || 0) + 1, outreachStatus: 'contacted' } : l));
-    notify(` Email logged for ${lead.businessName}`);
+    };
+
+    setEmails(prev => [emailEntry, ...prev]);
+    setLeads(prev => prev.map(l => l.id === draft.leadId ? { ...l, lastEmailed: now, emailCount: (l.emailCount || 0) + 1, outreachStatus: 'contacted' } : l));
+    closeModal('composeEmail');
+    notify(`Email logged for ${draft.leadName || draft.to}`);
+    return true;
   }, [notify]);
 
   const generateLeadAudit = useCallback((lead) => {
@@ -765,7 +792,7 @@ export function CRMProvider({ children }) {
       modals, openModal, closeModal, closeAllModals,
       todaysCalls, progress, hotLeads, activeGolfCourse, followUps, overdueCount, analytics, todaysSales, weekSales, quotaStats, outreachReadyCount, recentAudits,
       importJobs, setImportJobs,
-      notify, tallyCall, quickLogEmail, addLead, updateLead, moveToDNC, moveToDead, restoreFromDNC, restoreFromDead, 
+      notify, tallyCall, openEmailComposer, quickLogEmail, addLead, updateLead, moveToDNC, moveToDead, restoreFromDNC, restoreFromDead, 
       importGooglePlacesLeads, importFacebookLeads, enrichExistingLeads, generateLeadAudit, updateOutreachStatus,
       convertLead, unconvertLead, deleteToTrash, restoreFromTrash, emptyTrash,
       deleteCall, updateCall, addGolfCourse, updateGolfCourse, deleteGolfCourse, recordSale, updateSale, deleteSale, getCurrentList, clearAllData,

@@ -386,7 +386,7 @@ const FilterHeader = ({ type }) => {
 
 // List View (leads, dnc, dead, calllog, trash, emails, converted, sales)
 export function ListView({ type }) {
-  const { view, getCurrentList, selectedIndex, setSelectedIndex, openModal, restoreFromTrash, restoreFromDNC, restoreFromDead, unconvertLead, emptyTrash, trash, quickLogEmail, session, startSession, stopSession, sessionNext, tallyCall, updateLead, convertLead, moveToDNC, moveToDead, notify } = useCRM();
+  const { view, getCurrentList, selectedIndex, setSelectedIndex, openModal, restoreFromTrash, restoreFromDNC, restoreFromDead, unconvertLead, emptyTrash, trash, openEmailComposer, session, startSession, stopSession, sessionNext, tallyCall, updateLead, convertLead, moveToDNC, moveToDead, notify } = useCRM();
   const list = getCurrentList();
 
   const titles = { 
@@ -621,7 +621,7 @@ export function ListView({ type }) {
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   {item.email && (
-                    <button onClick={(e) => { e.stopPropagation(); quickLogEmail(item); }} style={{ ...buttonBase, padding: '4px 8px', background: colors.primary, color: '#fff', fontSize: 10 }}>📧</button>
+                    <button onClick={(e) => { e.stopPropagation(); openEmailComposer(item); }} style={{ ...buttonBase, padding: '4px 8px', background: colors.primary, color: '#fff', fontSize: 10 }}>📧</button>
                   )}
                   <div style={{ textAlign: 'right' }}>
                     {['leads', 'followups'].includes(type) && <div style={{ color: colors.success, fontSize: 13, fontWeight: '600' }}>{item.callCount || 0} calls</div>}

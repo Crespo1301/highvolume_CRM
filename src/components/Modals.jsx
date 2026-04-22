@@ -541,7 +541,7 @@ export function RecordSaleModal() {
 }
 
 export function LeadDetailModal() {
-  const { modals, closeModal, openModal, updateLead, moveToDNC, moveToDead, convertLead, deleteToTrash, tallyCall, quickLogEmail, deleteCall, audits, generateLeadAudit, updateOutreachStatus } = useCRM();
+  const { modals, closeModal, openModal, updateLead, moveToDNC, moveToDead, convertLead, deleteToTrash, tallyCall, openEmailComposer, deleteCall, audits, generateLeadAudit, updateOutreachStatus } = useCRM();
   const [showConvert, setShowConvert] = useState(false);
   const [saleForm, setSaleForm] = useState({ type: 'single', amount: 395, saleCount: 1, notes: '' });
   const lead = modals.leadDetail;
@@ -608,7 +608,7 @@ export function LeadDetailModal() {
           <div style={{ display: 'flex', gap: 8 }}>
             <button onClick={() => openModal('editLead', lead)} style={{ ...buttonBase, background: colors.bgCard, color: colors.primary }}>✏️</button>
             <button onClick={() => tallyCall(lead)} style={{ ...buttonBase, background: colors.success, color: '#fff' }}>📞</button>
-            {lead.email && <button onClick={() => quickLogEmail(lead)} style={{ ...buttonBase, background: colors.primary, color: '#fff' }}>📧</button>}
+            {lead.email && <button onClick={() => openEmailComposer(lead)} style={{ ...buttonBase, background: colors.primary, color: '#fff' }}>📧</button>}
             <button onClick={() => closeModal('leadDetail')} style={{ ...buttonBase, background: colors.bgCard, color: colors.textMuted }}><IconX size={16} /></button>
           </div>
         </div>
@@ -755,6 +755,108 @@ export function LeadDetailModal() {
           <button onClick={() => { moveToDead(lead); closeModal('leadDetail'); }} style={{ ...buttonBase, background: colors.danger, color: '#fff' }}>💀 Dead</button>
           <button onClick={() => setShowConvert(true)} style={{ ...buttonBase, background: colors.success, color: '#fff', fontWeight: '600' }}>🎉 Convert + Sale</button>
           <button onClick={() => deleteToTrash(lead, 'lead')} style={{ ...buttonBase, background: colors.bgCard, color: colors.danger, marginLeft: 'auto' }}>️</button>
+        </div>
+      </ModalBox>
+    </Modal>
+  );
+}
+
+export function ComposeEmailModal() {
+  const { modals, closeModal, quickLogEmail, notify } = useCRM();
+  const draft = modals.composeEmail;
+  const [form, setForm] = useState(null);
+
+  React.useEffect(() => {
+    if (draft) {
+      setForm(draft);
+    } else {
+      setForm(null);
+    }
+  }, [draft]);
+
+  if (!draft || !form) return null;
+
+  const updateForm = (patch) => setForm(prev => ({ ...prev, ...patch }));
+
+  const copyText = async (value, label) => {
+    try {
+      await navigator.clipboard.writeText(value || '');
+      notify(`${label} copied`);
+    } catch {
+      notify(`Could not copy ${label.toLowerCase()}`);
+    }
+  };
+
+  const openMailApp = () => {
+    const query = new URLSearchParams({
+      subject: form.subject || '',
+      body: form.body || ''
+    });
+    window.location.href = `mailto:${encodeURIComponent(form.to || '')}?${query.toString()}`;
+  };
+
+  return (
+    <Modal onClose={() => closeModal('composeEmail')}>
+      <ModalBox maxWidth={760}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, marginBottom: 20 }}>
+          <div>
+            <h2 style={{ color: colors.text, fontSize: 22, marginBottom: 6 }}>Email draft</h2>
+            <p style={{ color: colors.textMuted, fontSize: 13 }}>
+              Review the message for {form.leadName || form.to}, then open your mail app or log it after sending.
+            </p>
+          </div>
+          <button onClick={() => closeModal('composeEmail')} style={{ ...buttonBase, background: colors.bgCard, color: colors.textMuted }}>
+            <IconX size={16} />
+          </button>
+        </div>
+
+        <div style={{ display: 'grid', gap: 14 }}>
+          <div>
+            <label style={{ display: 'block', color: colors.textMuted, marginBottom: 6, fontSize: 12 }}>To</label>
+            <input
+              type="email"
+              value={form.to || ''}
+              onChange={e => updateForm({ to: e.target.value })}
+              style={inputBase}
+            />
+          </div>
+
+          <div>
+            <label style={{ display: 'block', color: colors.textMuted, marginBottom: 6, fontSize: 12 }}>Subject</label>
+            <input
+              type="text"
+              value={form.subject || ''}
+              onChange={e => updateForm({ subject: e.target.value })}
+              style={inputBase}
+            />
+          </div>
+
+          <div>
+            <label style={{ display: 'block', color: colors.textMuted, marginBottom: 6, fontSize: 12 }}>Body</label>
+            <textarea
+              value={form.body || ''}
+              onChange={e => updateForm({ body: e.target.value })}
+              style={{ ...inputBase, minHeight: 240, resize: 'vertical', lineHeight: 1.5 }}
+            />
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 20 }}>
+          <button onClick={() => copyText(form.subject, 'Subject')} style={{ ...buttonBase, background: colors.bgCard, color: colors.text }}>
+            Copy Subject
+          </button>
+          <button onClick={() => copyText(form.body, 'Body')} style={{ ...buttonBase, background: colors.bgCard, color: colors.text }}>
+            Copy Body
+          </button>
+          <button onClick={openMailApp} style={{ ...buttonBase, background: colors.primary, color: '#fff' }}>
+            Open Mail App
+          </button>
+          <button onClick={() => quickLogEmail(form)} style={{ ...buttonBase, background: colors.success, color: '#fff' }}>
+            Log as Sent
+          </button>
+          <button onClick={() => closeModal('composeEmail')} style={{ ...buttonBase, background: 'transparent', color: colors.textMuted, border: `1px solid ${colors.border}` }}>
+            Cancel
+          </button>
         </div>
       </ModalBox>
     </Modal>
@@ -1075,6 +1177,7 @@ export function AllModals() {
       <ImportModal />
       <ExportModal />
       <RecordSaleModal />
+      <ComposeEmailModal />
       <LeadDetailModal />
       <EditLeadModal />
       <EditSaleModal />

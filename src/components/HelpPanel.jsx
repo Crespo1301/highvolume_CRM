@@ -6,7 +6,7 @@ import { colors, buttonBase } from '../utils/theme.jsx';
 const shortcuts = [
   ['Navigation', [['1', 'Dashboard'], ['3', 'Leads'], ['O', 'Outreach'], ['F', 'Follow-ups'], ['C', 'Calls'], ['$', 'Sales']]],
   ['More Nav', [['V', 'Converted'], ['7', 'DNC'], ['9', 'Dead'], ['G', 'Markets'], ['T', 'Trash'], ['A', 'Analytics'], ['-', 'Emails']]],
-  ['Actions', [['SPACE', 'Manual tally'], ['E', 'Quick email'], ['Enter', 'Open lead'], ['Left', 'Move to DNC'], ['Right', 'Move to Dead'], ['.', 'Delete'], ['+', 'Add Lead']]],
+  ['Actions', [['SPACE', 'Manual tally'], ['E', 'Open email draft'], ['Enter', 'Open lead'], ['Left', 'Move to DNC'], ['Right', 'Move to Dead'], ['.', 'Delete'], ['+', 'Add Lead']]],
   ['Workflow', [['I', 'Import leads'], ['X', 'Export data'], ['S', 'Settings'], ['/', 'Help'], ['Esc', 'Close modal']]]
 ];
 
@@ -46,7 +46,7 @@ export function EnhancedHelpModal() {
           <div style={{ color: colors.text, fontSize: 14, fontWeight: '600' }}>Recommended daily workflow</div>
           <div style={{ color: colors.textMuted, fontSize: 13 }}>1. Import from Google Places, Facebook, CSV, or JSON.</div>
           <div style={{ color: colors.textMuted, fontSize: 13 }}>2. Run enrichment to improve website status, location data, priority, and outreach angle.</div>
-          <div style={{ color: colors.textMuted, fontSize: 13 }}>3. Work the Outreach queue, generate audits, and log calls or emails as activity happens.</div>
+          <div style={{ color: colors.textMuted, fontSize: 13 }}>3. Work the Outreach queue, generate audits, draft emails, and log calls or sent emails as activity happens.</div>
           <div style={{ color: colors.textMuted, fontSize: 13 }}>4. Use Follow-ups, Emails, and Recent Audits to stay consistent through the day.</div>
           <div style={{ color: colors.textMuted, fontSize: 13 }}>5. On mobile, use the app tabs and buttons normally. Desktop shortcuts remain the fastest option.</div>
         </div>

@@ -1233,14 +1233,21 @@ export function EditSaleModal() {
 export function EditCallModal() {
   const { modals, closeModal, updateCall, deleteCall } = useCRM();
   const [form, setForm] = useState(null);
-  React.useEffect(() => { if (modals.editCall) setForm({ ...modals.editCall }); }, [modals.editCall]);
-  if (!form) return null;
+  React.useEffect(() => {
+    if (!modals.editCall) { setForm(null); return; }
+    setForm({ ...modals.editCall });
+  }, [modals.editCall]);
+
+  if (!modals.editCall || !form) return null;
+
+  const onClose = () => { setForm(null); closeModal('editCall'); };
+
   return (
-    <Modal onClose={() => closeModal('editCall')}>
+    <Modal onClose={onClose}>
       <ModalBox maxWidth={500}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
           <h2 style={{ color: colors.text, fontSize: 18 }}>✏️ Edit Call</h2>
-          <button onClick={() => closeModal('editCall')} style={{ ...buttonBase, background: colors.bgCard, color: colors.textMuted }}><IconX size={16} /></button>
+          <button onClick={onClose} style={{ ...buttonBase, background: colors.bgCard, color: colors.textMuted }}><IconX size={16} /></button>
         </div>
         <div style={{ display: 'grid', gap: 14 }}>
           <div><label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>Lead Name</label><input value={form.leadName || ''} onChange={e => setForm(f => ({ ...f, leadName: e.target.value }))} style={inputBase} /></div>
@@ -1254,9 +1261,9 @@ export function EditCallModal() {
           <div><label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>Notes</label><textarea value={form.notes || ''} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={3} style={{ ...inputBase, resize: 'vertical' }} /></div>
         </div>
         <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
-          <button onClick={() => updateCall(form)} style={{ ...buttonBase, flex: 1, background: colors.success, color: '#fff' }}>Save</button>
-          <button onClick={() => { deleteCall(form.id); closeModal('editCall'); }} style={{ ...buttonBase, background: colors.danger, color: '#fff' }}>Delete</button>
-          <button onClick={() => closeModal('editCall')} style={{ ...buttonBase, background: colors.bgCard, color: colors.text }}>Cancel</button>
+          <button onClick={() => { updateCall(form); onClose(); }} style={{ ...buttonBase, flex: 1, background: colors.success, color: '#fff' }}>Save</button>
+          <button onClick={() => { deleteCall(form.id); onClose(); }} style={{ ...buttonBase, background: colors.danger, color: '#fff' }}>Delete</button>
+          <button onClick={onClose} style={{ ...buttonBase, background: colors.bgCard, color: colors.text }}>Cancel</button>
         </div>
       </ModalBox>
     </Modal>
@@ -1266,10 +1273,17 @@ export function EditCallModal() {
 export function EditGolfCourseModal() {
   const { modals, closeModal, updateGolfCourse, deleteGolfCourse } = useCRM();
   const [form, setForm] = useState(null);
-  React.useEffect(() => { if (modals.editGolfCourse) setForm({ ...modals.editGolfCourse }); }, [modals.editGolfCourse]);
-  if (!form) return null;
+  React.useEffect(() => {
+    if (!modals.editGolfCourse) { setForm(null); return; }
+    setForm({ ...modals.editGolfCourse });
+  }, [modals.editGolfCourse]);
+
+  if (!modals.editGolfCourse || !form) return null;
+
+  const onClose = () => { setForm(null); closeModal('editGolfCourse'); };
+
   return (
-    <Modal onClose={() => closeModal('editGolfCourse')}>
+    <Modal onClose={onClose}>
       <ModalBox maxWidth={550}>
         <h2 style={{ color: colors.accent, marginBottom: 20, fontSize: 18 }}>⛳ Edit Market</h2>
         <div style={{ display: 'grid', gap: 14 }}>
@@ -1278,9 +1292,9 @@ export function EditGolfCourseModal() {
           ))}
         </div>
         <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
-          <button onClick={() => updateGolfCourse(form)} style={{ ...buttonBase, flex: 1, background: colors.success, color: '#fff' }}>Save</button>
-          <button onClick={() => { deleteGolfCourse(form.id); closeModal('editGolfCourse'); }} style={{ ...buttonBase, background: colors.danger, color: '#fff' }}>Delete</button>
-          <button onClick={() => closeModal('editGolfCourse')} style={{ ...buttonBase, background: colors.bgCard, color: colors.text }}>Cancel</button>
+          <button onClick={() => { updateGolfCourse(form); onClose(); }} style={{ ...buttonBase, flex: 1, background: colors.success, color: '#fff' }}>Save</button>
+          <button onClick={() => { deleteGolfCourse(form.id); onClose(); }} style={{ ...buttonBase, background: colors.danger, color: '#fff' }}>Delete</button>
+          <button onClick={onClose} style={{ ...buttonBase, background: colors.bgCard, color: colors.text }}>Cancel</button>
         </div>
       </ModalBox>
     </Modal>

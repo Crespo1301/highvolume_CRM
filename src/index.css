@@ -57,8 +57,33 @@ select {
 
 .landing-brand {
   display: inline-flex;
-  flex-direction: column;
+  align-items: center;
+  gap: 14px;
   text-decoration: none;
+}
+
+.landing-brand__mark {
+  width: 54px;
+  height: 54px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16px;
+  background: #25262b;
+  border: 1px solid #373a40;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.landing-brand__mark img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.landing-brand__copy {
+  display: grid;
+  gap: 4px;
 }
 
 .landing-brand h1 span {
@@ -132,6 +157,23 @@ select {
 .landing-hero,
 .landing-cta {
   padding: 28px;
+}
+
+.landing-hero__meta {
+  padding-top: 2px;
+}
+
+.landing-hero__meta-copy {
+  max-width: 720px;
+}
+
+.landing-hero__meta-copy p {
+  color: #909296;
+  line-height: 1.6;
+}
+
+.landing-hero__meta-copy a {
+  color: #4dabf7;
 }
 
 .landing-eyebrow,
@@ -228,6 +270,12 @@ select {
   max-width: 760px;
 }
 
+.landing-section__title h3,
+.landing-cta h3 {
+  font-size: clamp(28px, 3vw, 44px);
+  letter-spacing: -0.03em;
+}
+
 .landing-feature-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
@@ -255,6 +303,13 @@ select {
   display: block;
   margin-bottom: 10px;
   font-size: 18px;
+}
+
+.landing-hero__copy p,
+.landing-section__title p,
+.landing-card p,
+.landing-workflow__item p {
+  line-height: 1.6;
 }
 
 .landing-cta {
@@ -319,6 +374,10 @@ select {
 
   .landing-nav {
     flex-direction: column;
+  }
+
+  .landing-brand {
+    align-items: flex-start;
   }
 
   .landing-nav__actions {

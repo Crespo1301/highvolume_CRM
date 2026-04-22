@@ -1,62 +1,72 @@
+import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 
 const featureList = [
   {
-    eyebrow: 'Fast lead handling',
-    title: 'Keep every prospect organized from first call to close',
+    eyebrow: 'Lead Management',
+    title: 'Keep Every Prospect In One Place',
     description:
-      'Track active leads, callbacks, conversions, dead leads, and DNC records in one compact workspace.',
+      'Track active leads, callbacks, conversions, dead leads, and DNC records without bouncing between tools.',
   },
   {
-    eyebrow: 'Built for speed',
-    title: 'Move through daily outreach without fighting the software',
+    eyebrow: 'Daily Execution',
+    title: 'Work Fast When Volume Is High',
     description:
-      'Shortcuts, quick actions, and simple list views make the CRM feel fast when call volume is high.',
+      'Shortcuts, quick actions, and compact list views keep your calling blocks moving.',
   },
   {
-    eyebrow: 'Clear visibility',
-    title: 'See calls, sales, quota, and follow ups at a glance',
+    eyebrow: 'Pipeline Visibility',
+    title: 'See Calls, Sales, And Follow-Ups Clearly',
     description:
-      'The dashboard keeps performance, momentum, and next steps visible without cluttering the interface.',
+      'The dashboard keeps performance, momentum, and next steps visible without burying what matters.',
   },
   {
-    eyebrow: 'Practical workflow',
-    title: 'Designed for operators who sell through activity',
+    eyebrow: 'Free Tools',
+    title: 'Built By Carlos Crespo For Real Outreach Work',
     description:
-      'Use it for prospecting, calling, note taking, follow ups, revenue tracking, and day-to-day execution.',
+      'Use the CRM and supporting tools from CarlosCrespo.info to prospect, follow up, and stay organized.',
   },
 ]
 
 const workflowSteps = [
   {
     step: '01',
-    title: 'Bring in leads quickly',
+    title: 'Import Or Add Leads',
     description:
-      'Add businesses manually or import lead lists so you can start working instead of setting up a complicated system.',
+      'Pull in leads from your lists, Google Places, or manual research and start working right away.',
   },
   {
     step: '02',
-    title: 'Work the list with speed',
+    title: 'Call, Email, And Log Activity',
     description:
-      'Call, log outcomes, move records, and set follow ups from the same focused interface.',
+      'Run outreach from one focused workspace, then update status, notes, and next steps as you go.',
   },
   {
     step: '03',
-    title: 'Track what is actually moving',
+    title: 'Stay On Top Of Follow-Up',
     description:
-      'Watch calls, sales, conversions, and quotas so your daily output stays measurable.',
+      'Keep tabs on follow-ups, conversions, revenue, and daily output so nothing slips through the cracks.',
   },
 ]
 
 export default function LandingPage() {
+  useEffect(() => {
+    document.title = 'HighVolume CRM | Free CRM Tools By Carlos Crespo'
+  }, [])
+
   return (
     <div className="landing-page">
       <header className="landing-nav">
         <Link to="/" className="landing-brand">
-          <h1>
-            <span>HighVolume CRM</span>
-          </h1>
-          <p>Keyboard-first CRM for high-volume outreach</p>
+          <span className="landing-brand__mark">
+            <img src="/carloscrespo-mark.svg" alt="Carlos Crespo Brand Mark" />
+          </span>
+          <div className="landing-brand__copy">
+            <h1>
+              <span>HighVolume CRM</span>
+            </h1>
+            <p>Free CRM Tools By Carlos Crespo</p>
+          </div>
         </Link>
 
         <div className="landing-nav__actions">
@@ -78,17 +88,17 @@ export default function LandingPage() {
       <main className="landing-main">
         <section className="landing-hero landing-panel">
           <div className="landing-hero__copy">
-            <span className="landing-kicker">All-in-one outreach workspace</span>
-            <span className="landing-eyebrow">Built for real daily volume</span>
-            <h2>Track leads, follow-ups, and sales activity from one fast CRM.</h2>
+            <span className="landing-kicker">CarlosCrespo.info</span>
+            <span className="landing-eyebrow">Free Outreach CRM</span>
+            <h2>Simple CRM Tools For Operators Who Need To Move Fast.</h2>
             <p>
-              HighVolume CRM helps outreach-focused operators organize prospects, log communication,
-              manage follow ups, and stay on top of daily performance without bloated setup.
+              HighVolume CRM is a free tool by Carlos Crespo for managing leads, daily outreach,
+              follow-ups, and revenue without bloated setup.
             </p>
 
             <div className="landing-hero__actions">
               <Link to="/app" className="landing-button landing-button--primary">
-                Enter the App
+                Enter The App
               </Link>
               <Link to="/tutorial" className="landing-button landing-button--secondary">
                 Full Tutorial
@@ -96,18 +106,33 @@ export default function LandingPage() {
             </div>
           </div>
 
+          <div className="landing-hero__meta">
+            <div className="landing-hero__meta-copy">
+              <span className="landing-eyebrow">Built To Support The Full Workflow</span>
+              <p>
+                This CRM is part of the free toolset Carlos Crespo shares through
+                {' '}
+                <a href="https://carloscrespo.info" target="_blank" rel="noopener noreferrer">
+                  CarlosCrespo.info
+                </a>
+                {' '}
+                for lead generation, outreach, and follow-up execution.
+              </p>
+            </div>
+          </div>
+
           <div className="landing-inline-stats">
             <div className="landing-inline-stat">
-              <span>Lead tracking</span>
-              <strong>Active, follow-up, converted, dead, and DNC views</strong>
+              <span>Lead Tracking</span>
+              <strong>Active, Follow-Up, Converted, Dead, And DNC Views</strong>
             </div>
             <div className="landing-inline-stat">
-              <span>Daily execution</span>
-              <strong>Calls, goals, and quick actions kept front and center</strong>
+              <span>Daily Execution</span>
+              <strong>Calls, Goals, And Quick Actions Kept Front And Center</strong>
             </div>
             <div className="landing-inline-stat">
-              <span>Sales visibility</span>
-              <strong>Revenue, quota, and weekly performance in the same dashboard</strong>
+              <span>Sales Visibility</span>
+              <strong>Revenue, Quota, And Weekly Performance In The Same Dashboard</strong>
             </div>
           </div>
         </section>
@@ -115,7 +140,7 @@ export default function LandingPage() {
         <section id="features" className="landing-section">
           <div className="landing-section__title">
             <span className="landing-eyebrow">Features</span>
-            <h3>Everything important stays visible, compact, and easy to act on.</h3>
+            <h3>Everything You Need To Find, Work, And Track Leads.</h3>
           </div>
 
           <div className="landing-feature-grid landing-feature-grid--expanded">
@@ -132,9 +157,9 @@ export default function LandingPage() {
         <section id="workflow" className="landing-section">
           <div className="landing-section__title">
             <span className="landing-eyebrow">Workflow</span>
-            <h3>A straightforward system for daily outreach work.</h3>
+            <h3>Run Your Outreach In Three Clear Steps.</h3>
             <p className="landing-muted">
-              The CRM is designed to support the actual rhythm of prospecting and follow-up, not slow it down.
+              The workflow is built to help you get from imported lead to real follow-up without extra friction.
             </p>
           </div>
 
@@ -151,12 +176,12 @@ export default function LandingPage() {
 
         <section className="landing-cta">
           <div>
-            <span className="landing-eyebrow">Ready to start</span>
-            <h3>Open the CRM and start working your leads.</h3>
+            <span className="landing-eyebrow">Start Free</span>
+            <h3>Use The CRM, Learn The Workflow, And Make It Yours.</h3>
           </div>
           <div className="landing-hero__actions">
             <Link to="/tutorial" className="landing-button landing-button--secondary">
-              Read the Tutorial
+              Read The Tutorial
             </Link>
             <Link to="/app" className="landing-button landing-button--primary">
               Open HighVolume CRM

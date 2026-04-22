@@ -1,10 +1,11 @@
+import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 
 const sections = [
   {
     id: 'overview',
     eyebrow: 'Overview',
-    title: 'What HighVolume CRM is built to do',
+    title: 'What HighVolume CRM Is Built To Do',
     body: [
       'HighVolume CRM is a keyboard-first outreach workspace built for finding local businesses, organizing lead data, preparing outreach, and tracking follow-ups and sales.',
       'The app is designed for solo operators and small teams who need a lightweight system for daily lead generation and outreach, especially in local service markets.'
@@ -13,7 +14,7 @@ const sections = [
   {
     id: 'imports',
     eyebrow: 'Lead Intake',
-    title: 'How importing works',
+    title: 'How Importing Works',
     body: [
       'Use the Import modal to bring leads in from Google Places, Facebook-style pasted rows, CSV files, or JSON backups.',
       'Google Places imports are best for local business discovery by market and industry. Facebook intake is best when you find businesses manually and want to paste them in quickly.',
@@ -29,7 +30,7 @@ const sections = [
   {
     id: 'enrichment',
     eyebrow: 'Enrichment',
-    title: 'What the enrichment feature actually does',
+    title: 'What The Enrichment Feature Does',
     body: [
       'Enrichment upgrades leads so they are easier to prioritize and work. It normalizes website status, recalculates priority score, fills missing location details when possible, and generates an outreach angle.',
       'This matters because the CRM uses those values to help you decide who is worth calling or emailing first.'
@@ -44,7 +45,7 @@ const sections = [
   {
     id: 'outreach',
     eyebrow: 'Outreach Queue',
-    title: 'How the outreach workflow should be used',
+    title: 'How The Outreach Workflow Works',
     body: [
       'The Outreach tab is your working queue for leads that are worth attention right now. It focuses on leads that are hot or normal priority and have at least one contact path like a phone number, email address, or Facebook page.',
       'Use it after import and enrichment, not before. The idea is to narrow the field to leads that are ready for action.'
@@ -60,7 +61,7 @@ const sections = [
   {
     id: 'audits',
     eyebrow: 'Audit System',
-    title: 'How website audits work',
+    title: 'How Website Audits Work',
     body: [
       'Audits in this CRM are deterministic, not AI-dependent. They are based on the website status and current lead context, and they generate a summary plus talking points that you can use in calls and emails.',
       'The purpose is speed. Instead of doing a long manual review before every outreach attempt, you can generate a fast audit and work from the output.'
@@ -75,7 +76,7 @@ const sections = [
   {
     id: 'email',
     eyebrow: 'Email Composer',
-    title: 'How the email workflow should be used',
+    title: 'How The Email Workflow Works',
     body: [
       'The email action now opens a draft composer for the selected lead. It pre-fills the recipient, subject, and body so you can review or edit the message before sending.',
       'The composer also supports an email sequence flow, so you can move from intro to follow-up 1, follow-up 2, and breakup emails while automatically scheduling the next touch.'
@@ -93,7 +94,7 @@ const sections = [
   {
     id: 'followups',
     eyebrow: 'Follow-ups',
-    title: 'How follow-ups should be handled',
+    title: 'How Follow-Ups Should Be Handled',
     body: [
       'Follow-ups are the consistency layer of the CRM. After a call or email, set a future date so the lead does not disappear into the list.',
       'The dashboard and Follow-ups tab surface due and overdue records so you can stay on top of your active opportunities.'
@@ -102,7 +103,7 @@ const sections = [
   {
     id: 'analytics',
     eyebrow: 'Analytics',
-    title: 'What the dashboard and analytics are telling you',
+    title: 'What The Dashboard And Analytics Show',
     body: [
       'The dashboard gives you live operating context: calls today, sales today, quota progress, follow-ups due, recent audits, and outreach-ready counts.',
       'The Analytics view is for trend review. It helps you measure whether your activity is turning into conversations, emails, audits, and revenue.'
@@ -117,7 +118,7 @@ const sections = [
   {
     id: 'shortcuts',
     eyebrow: 'Shortcuts',
-    title: 'When to use keyboard shortcuts',
+    title: 'When To Use Keyboard Shortcuts',
     body: [
       'The app is still fastest on desktop. If you are doing a real calling block, keyboard shortcuts are the quickest way to move through leads.',
       'If you are on mobile or tablet, the interface still works, but the intended power workflow is desktop-first.'
@@ -132,14 +133,23 @@ const sections = [
 ]
 
 export default function TutorialPage() {
+  useEffect(() => {
+    document.title = 'Tutorial | HighVolume CRM By Carlos Crespo'
+  }, [])
+
   return (
     <div className="landing-page tutorial-page">
       <header className="landing-nav">
         <Link to="/" className="landing-brand">
-          <h1>
-            <span>HighVolume CRM</span>
-          </h1>
-          <p>The complete guide to using the CRM well</p>
+          <span className="landing-brand__mark">
+            <img src="/carloscrespo-mark.svg" alt="Carlos Crespo Brand Mark" />
+          </span>
+          <div className="landing-brand__copy">
+            <h1>
+              <span>HighVolume CRM</span>
+            </h1>
+            <p>The Complete Guide By Carlos Crespo</p>
+          </div>
         </Link>
 
         <div className="landing-nav__actions">
@@ -153,16 +163,15 @@ export default function TutorialPage() {
       <main className="landing-main">
         <section className="landing-hero landing-panel tutorial-hero">
           <div className="landing-hero__copy">
-            <span className="landing-kicker">Ultimate tutorial</span>
-            <span className="landing-eyebrow">How to use every major part of the CRM</span>
-            <h2>Understand the system before you work the queue.</h2>
+            <span className="landing-kicker">CarlosCrespo.info</span>
+            <span className="landing-eyebrow">Ultimate Tutorial</span>
+            <h2>Learn The CRM Once, Then Work Faster Every Day.</h2>
             <p>
-              This page explains the purpose of every major feature, how the workflow fits together,
-              and how to actually use HighVolume CRM for daily lead generation, outreach, and follow-up.
+              This guide explains what each major feature does, when to use it, and how the full outreach workflow fits together.
             </p>
 
             <div className="landing-hero__actions">
-              <Link to="/app" className="landing-button landing-button--primary">Open the App</Link>
+              <Link to="/app" className="landing-button landing-button--primary">Open The App</Link>
               <a href="#overview" className="landing-button landing-button--secondary">Start Reading</a>
             </div>
           </div>
@@ -191,8 +200,8 @@ export default function TutorialPage() {
 
         <section className="landing-cta">
           <div>
-            <span className="landing-eyebrow">Next step</span>
-            <h3>Open the CRM and use this guide as your reference while you work.</h3>
+            <span className="landing-eyebrow">Next Step</span>
+            <h3>Open The CRM And Keep This Guide Nearby While You Work.</h3>
           </div>
           <Link to="/app" className="landing-button landing-button--primary">
             Open HighVolume CRM

@@ -10,7 +10,7 @@ export function Footer() {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <div className="app-footer__top" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
           <div style={{ color: colors.textDim, fontSize: 12 }}>
-            © 2026 <a href="https://carloscrespo.info" target="_blank" rel="noopener noreferrer" style={{ color: colors.primary, textDecoration: 'none' }}>Carlos Crespo</a>
+            © 2026 <a href="https://carloscrespo.info" target="_blank" rel="noopener noreferrer" style={{ color: colors.primary, textDecoration: 'none' }}>Carlos Crespo</a> • Free Tools At CarlosCrespo.info
           </div>
           <div className="app-footer__links" style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 12 }}>
             <button onClick={() => openModal('privacy')} style={{ background: 'transparent', border: 'none', color: colors.textMuted, cursor: 'pointer', fontFamily: 'inherit', fontSize: 12 }}>Privacy</button>
@@ -33,7 +33,7 @@ export function Footer() {
             <Shortcut k="I" label="Import" />
             <Shortcut k="X" label="Export" last />
           </div>
-          <div style={{ color: colors.textDim, fontSize: 11 }}>Data saved locally in browser</div>
+          <div style={{ color: colors.textDim, fontSize: 11 }}>Data Saved Locally In Browser</div>
         </div>
       </div>
     </footer>

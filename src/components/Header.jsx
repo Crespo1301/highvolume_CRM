@@ -14,7 +14,12 @@ export function Header() {
       <header className="app-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, paddingBottom: 20, borderBottom: `1px solid ${colors.border}` }}>
         <div className="app-header__brand">
           <h1 style={{ fontSize: 26, fontWeight: '750', letterSpacing: 0.2, marginBottom: 6 }}>
-            <Link to="/" style={{ display: 'inline-flex', alignItems: 'center', textDecoration: 'none' }}>
+            <Link to="/" style={{ display: 'inline-flex', alignItems: 'center', gap: 12, textDecoration: 'none' }}>
+              <img
+                src="/carloscrespo-mark.svg"
+                alt="Carlos Crespo Brand Mark"
+                style={{ width: 30, height: 30, borderRadius: 8, flexShrink: 0 }}
+              />
               <span style={{ background: 'linear-gradient(90deg, #4dabf7, #69db7c)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
                 HighVolume CRM
               </span>
@@ -26,9 +31,10 @@ export function Header() {
             )}
           </h1>
           <p style={{ color: colors.textDim, fontSize: 12 }}>
-            Press <span style={{ background: colors.bgCard, padding: '2px 6px', borderRadius: 4, fontFamily: 'monospace' }}>/</span> for shortcuts (/? also works) •
-            <span style={{ marginLeft: 8, fontFamily: 'monospace', color: colors.textDim }}>N</span> next •
-            <span style={{ marginLeft: 8, fontFamily: 'monospace', color: colors.textDim }}>S</span> settings
+            Free CRM Tools By <a href="https://carloscrespo.info" target="_blank" rel="noopener noreferrer" style={{ color: colors.primary, textDecoration: 'none' }}>Carlos Crespo</a> •
+            <span style={{ marginLeft: 8 }}>Press <span style={{ background: colors.bgCard, padding: '2px 6px', borderRadius: 4, fontFamily: 'monospace' }}>/</span> For Shortcuts</span> •
+            <span style={{ marginLeft: 8, fontFamily: 'monospace', color: colors.textDim }}>N</span> Next •
+            <span style={{ marginLeft: 8, fontFamily: 'monospace', color: colors.textDim }}>S</span> Settings
           </p>
         </div>
 

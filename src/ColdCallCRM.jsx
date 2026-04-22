@@ -14,6 +14,10 @@ function CRMApp() {
   // Initialize keyboard handler
   useKeyboard();
 
+  React.useEffect(() => {
+    document.title = 'App | HighVolume CRM By Carlos Crespo'
+  }, []);
+
   return (
     <div style={{ 
       minHeight: '100vh', 

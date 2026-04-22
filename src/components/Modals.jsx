@@ -541,9 +541,10 @@ export function RecordSaleModal() {
 }
 
 export function LeadDetailModal() {
-  const { modals, closeModal, openModal, updateLead, moveToDNC, moveToDead, convertLead, deleteToTrash, tallyCall, openEmailComposer, deleteCall, audits, generateLeadAudit, updateOutreachStatus } = useCRM();
+  const { modals, closeModal, openModal, updateLead, moveToDNC, moveToDead, convertLead, deleteToTrash, tallyCall, openEmailComposer, deleteCall, audits, generateLeadAudit, updateOutreachStatus, findLeadEmail, notify } = useCRM();
   const [showConvert, setShowConvert] = useState(false);
   const [saleForm, setSaleForm] = useState({ type: 'single', amount: 395, saleCount: 1, notes: '' });
+  const [isFindingEmail, setIsFindingEmail] = useState(false);
   const lead = modals.leadDetail;
   const latestAudit = (audits || []).find(audit => audit.leadId === lead?.id);
   if (!lead) return null;
@@ -562,6 +563,17 @@ export function LeadDetailModal() {
   const setFollowUp = (days) => {
     const d = new Date(); d.setDate(d.getDate() + days);
     updateLead({ ...lead, followUp: `${d.toISOString().split('T')[0]}T12:00:00` });
+  };
+
+  const handleFindEmail = async () => {
+    setIsFindingEmail(true);
+    try {
+      await findLeadEmail(lead);
+    } catch (error) {
+      notify(error.message || 'Unable to find email for this lead.');
+    } finally {
+      setIsFindingEmail(false);
+    }
   };
 
   if (showConvert) {
@@ -628,6 +640,42 @@ export function LeadDetailModal() {
             </div>
           ))}
         </div>
+
+        {(lead.website || lead.emailDiscoveryStatus !== 'not_run') && (
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ color: colors.textDim, fontSize: 11, marginBottom: 8, textTransform: 'uppercase' }}>Email Discovery</div>
+            <div style={{ background: colors.bgCard, padding: 14, borderRadius: 10 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: '600' }}>
+                    {lead.email || 'No email on file'}
+                  </div>
+                  <div style={{ color: colors.textMuted, fontSize: 12, marginTop: 4 }}>
+                    Status: {lead.emailDiscoveryStatus || 'not_run'}
+                    {lead.emailConfidence ? ` â€¢ confidence ${lead.emailConfidence}` : ''}
+                    {lead.emailSource ? ` â€¢ ${lead.emailSource}` : ''}
+                  </div>
+                  {lead.emailDiscoveryNotes && (
+                    <div style={{ color: colors.textDim, fontSize: 11, marginTop: 6 }}>{lead.emailDiscoveryNotes}</div>
+                  )}
+                </div>
+                <button
+                  onClick={handleFindEmail}
+                  disabled={isFindingEmail || !lead.website}
+                  style={{
+                    ...buttonBase,
+                    background: !lead.website ? colors.bg : colors.primary,
+                    color: !lead.website ? colors.textDim : '#fff',
+                    opacity: isFindingEmail ? 0.75 : 1,
+                    cursor: isFindingEmail ? 'wait' : (!lead.website ? 'not-allowed' : 'pointer')
+                  }}
+                >
+                  {isFindingEmail ? 'Finding...' : 'Find Email'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {(lead.googlePlaceId || lead.googleMapsUri || typeof lead.googleRating === 'number') && (
           <div style={{ marginBottom: 20 }}>

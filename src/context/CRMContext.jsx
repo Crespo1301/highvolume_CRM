@@ -653,6 +653,55 @@ export function CRMProvider({ children }) {
     closeModal('editLead');
     notify('Lead updated');
   }, [enrichLead, notify]);
+
+  const findLeadEmail = useCallback(async (lead) => {
+    if (!lead?.id) {
+      notify('Lead not found');
+      return { ok: false };
+    }
+    if (!lead.website) {
+      notify(`No website found for ${lead.businessName || 'this lead'}`);
+      return { ok: false };
+    }
+
+    notify(`Scanning ${lead.businessName || 'website'} for email...`);
+
+    const response = await fetch('/api/find-business-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        website: lead.website,
+        businessName: lead.businessName || '',
+      }),
+    });
+
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(payload?.error || 'Unable to find email from website.');
+    }
+
+    const now = new Date().toISOString();
+    const nextLead = enrichLead({
+      ...lead,
+      email: payload.status === 'found' ? (payload.email || lead.email || '') : (lead.email || ''),
+      emailSource: payload.source || '',
+      emailConfidence: payload.confidence || '',
+      emailDiscoveryStatus: payload.status || 'not_found',
+      emailDiscoveryNotes: payload.notes || '',
+      emailDiscoveredAt: now,
+    });
+
+    setLeads(prev => prev.map(item => item.id === lead.id ? nextLead : item));
+    openModal('leadDetail', nextLead);
+
+    if (payload.status === 'found' && payload.email) {
+      notify(`Found email for ${lead.businessName}`);
+    } else {
+      notify(`No email found for ${lead.businessName}`);
+    }
+
+    return { ok: true, lead: nextLead, payload };
+  }, [enrichLead, notify]);
   const moveToDNC = useCallback((lead) => { setLeads(prev => prev.filter(l => l.id !== lead.id)); setDncList(prev => [...prev, { ...lead, dncDate: new Date().toISOString() }]); notify(` ${lead.businessName} → DNC`); }, [notify]);
   const moveToDead = useCallback((lead) => { setLeads(prev => prev.filter(l => l.id !== lead.id)); setDeadLeads(prev => [...prev, { ...lead, deadDate: new Date().toISOString() }]); notify(` ${lead.businessName} → Dead`); }, [notify]);
   const restoreFromDNC = useCallback((lead) => { setDncList(prev => prev.filter(l => l.id !== lead.id)); setLeads(prev => [...prev, { ...lead, restoredAt: new Date().toISOString() }]); notify(` ${lead.businessName} restored`); }, [notify]);
@@ -822,7 +871,7 @@ export function CRMProvider({ children }) {
       modals, openModal, closeModal, closeAllModals,
       todaysCalls, progress, hotLeads, activeGolfCourse, followUps, overdueCount, analytics, todaysSales, weekSales, quotaStats, outreachReadyCount, recentAudits,
       importJobs, setImportJobs,
-      notify, tallyCall, openEmailComposer, quickLogEmail, addLead, updateLead, moveToDNC, moveToDead, restoreFromDNC, restoreFromDead, 
+      notify, tallyCall, openEmailComposer, quickLogEmail, addLead, updateLead, findLeadEmail, moveToDNC, moveToDead, restoreFromDNC, restoreFromDead, 
       importGooglePlacesLeads, importFacebookLeads, enrichExistingLeads, generateLeadAudit, updateOutreachStatus,
       convertLead, unconvertLead, deleteToTrash, restoreFromTrash, emptyTrash,
       deleteCall, updateCall, addGolfCourse, updateGolfCourse, deleteGolfCourse, recordSale, updateSale, deleteSale, getCurrentList, clearAllData,

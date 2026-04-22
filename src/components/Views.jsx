@@ -346,6 +346,20 @@ const FilterHeader = ({ type }) => {
             <option value="all">All Website Statuses</option>
             {WEBSITE_STATUS_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
           </select>
+
+          <select
+            value={filters.emailStatus || 'all'}
+            onChange={e => updateFilters({ emailStatus: e.target.value })}
+            style={{ ...inputBase, width: 'auto', padding: '4px 8px', fontSize: 11, background: colors.bg }}
+            title="Filter by email status"
+          >
+            <option value="all">All Email Statuses</option>
+            <option value="has_email">Has Email</option>
+            <option value="missing_email">Missing Email</option>
+            <option value="found">Discovery Found</option>
+            <option value="not_found">Discovery Not Found</option>
+            <option value="not_run">Discovery Not Run</option>
+          </select>
         </>
       )}
 
@@ -636,6 +650,13 @@ export function ListView({ type }) {
                     <button onClick={(e) => { e.stopPropagation(); openEmailComposer(item); }} style={{ ...buttonBase, padding: '4px 8px', background: colors.primary, color: '#fff', fontSize: 10 }}>📧</button>
                   )}
                   <div style={{ textAlign: 'right' }}>
+                    <div style={{ color: item.email ? colors.primary : item.emailDiscoveryStatus === 'not_found' ? colors.warning : colors.textDim, fontSize: 11 }}>
+                      {item.email
+                        ? 'Email ready'
+                        : item.emailDiscoveryStatus === 'not_found'
+                          ? 'Email not found'
+                          : 'Email not discovered'}
+                    </div>
                     {['leads', 'followups'].includes(type) && <div style={{ color: colors.success, fontSize: 13, fontWeight: '600' }}>{item.callCount || 0} calls</div>}
                     {typeof item.googleRating === 'number' && (
                       <div style={{ color: colors.textMuted, fontSize: 11 }}>

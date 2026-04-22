@@ -26,7 +26,7 @@ export function CRMProvider({ children }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [analyticsRange, setAnalyticsRange] = useState('week');
   const [sortBy, setSortBy] = useState('newest');
-  const [filters, setFilters] = useState(() => loadData(STORAGE_KEYS.filters, { golfCourseId: 'all', industry: 'all', priority: 'all', source: 'all', websiteStatus: 'all', outcome: 'all', saleType: 'all' }));
+  const [filters, setFilters] = useState(() => loadData(STORAGE_KEYS.filters, { golfCourseId: 'all', industry: 'all', priority: 'all', source: 'all', websiteStatus: 'all', emailStatus: 'all', outcome: 'all', saleType: 'all' }));
   const [session, setSession] = useState(() => loadData(STORAGE_KEYS.session, { active: false, view: 'leads', leadId: null }));
 
   // Modal state
@@ -169,7 +169,7 @@ export function CRMProvider({ children }) {
   }, [settings?.quotaMonth, settings?.monthlyQuota, settings?.dailyRevenueGoal, settings?.weeklyRevenueGoal, sales]);
   // Filters
   const updateFilters = useCallback((patch) => setFilters(prev => ({ ...prev, ...patch })), []);
-  const clearFilters = useCallback(() => setFilters({ golfCourseId: 'all', industry: 'all', priority: 'all', source: 'all', websiteStatus: 'all', outcome: 'all', saleType: 'all' }), []);
+  const clearFilters = useCallback(() => setFilters({ golfCourseId: 'all', industry: 'all', priority: 'all', source: 'all', websiteStatus: 'all', emailStatus: 'all', outcome: 'all', saleType: 'all' }), []);
 
   // Tally call
   const tallyCall = useCallback((lead = null, outcome = 'completed', notes = '') => {
@@ -224,6 +224,13 @@ export function CRMProvider({ children }) {
       }
       if (filters?.websiteStatus && filters.websiteStatus !== 'all') {
         if ((item.websiteStatus || 'unknown') !== filters.websiteStatus) return false;
+      }
+      if (filters?.emailStatus && filters.emailStatus !== 'all') {
+        if (filters.emailStatus === 'has_email' && !item.email) return false;
+        if (filters.emailStatus === 'missing_email' && item.email) return false;
+        if (filters.emailStatus === 'found' && (item.emailDiscoveryStatus || 'not_run') !== 'found') return false;
+        if (filters.emailStatus === 'not_found' && (item.emailDiscoveryStatus || 'not_run') !== 'not_found') return false;
+        if (filters.emailStatus === 'not_run' && (item.emailDiscoveryStatus || 'not_run') !== 'not_run') return false;
       }
 
       // Call log filters
@@ -702,6 +709,51 @@ export function CRMProvider({ children }) {
 
     return { ok: true, lead: nextLead, payload };
   }, [enrichLead, notify]);
+
+  const bulkFindLeadEmails = useCallback(async ({ golfCourseId = 'all', onlyMissingEmail = true } = {}) => {
+    const candidates = leads.filter((lead) => {
+      const matchesMarket = golfCourseId === 'all' || lead.golfCourseId === golfCourseId;
+      const missingEmail = onlyMissingEmail ? !lead.email : true;
+      return matchesMarket && missingEmail && !!lead.website;
+    });
+
+    if (!candidates.length) {
+      notify('No website leads are eligible for email discovery');
+      return { scannedCount: 0, foundCount: 0, notFoundCount: 0, skippedCount: 0 };
+    }
+
+    let foundCount = 0;
+    let notFoundCount = 0;
+
+    notify(`Starting email discovery for ${candidates.length} leads...`);
+
+    for (const lead of candidates) {
+      try {
+        const result = await findLeadEmail(lead);
+        if (result?.payload?.status === 'found') foundCount += 1;
+        else notFoundCount += 1;
+      } catch {
+        notFoundCount += 1;
+      }
+    }
+
+    const scannedCount = candidates.length;
+    const skippedCount = leads.length - scannedCount;
+
+    setImportJobs(prev => [{
+      id: generateId(),
+      sourceType: 'email_discovery',
+      label: 'Bulk email discovery',
+      createdAt: new Date().toISOString(),
+      addedCount: foundCount,
+      skippedCount: notFoundCount,
+      golfCourseId: golfCourseId === 'all' ? '' : golfCourseId,
+      marketLabel: golfCourseId === 'all' ? 'All markets' : (golfCourses.find(gc => gc.id === golfCourseId)?.name || ''),
+    }, ...prev].slice(0, 25));
+
+    notify(`Email discovery complete: ${foundCount} found, ${notFoundCount} not found`);
+    return { scannedCount, foundCount, notFoundCount, skippedCount };
+  }, [findLeadEmail, golfCourses, leads, notify]);
   const moveToDNC = useCallback((lead) => { setLeads(prev => prev.filter(l => l.id !== lead.id)); setDncList(prev => [...prev, { ...lead, dncDate: new Date().toISOString() }]); notify(` ${lead.businessName} → DNC`); }, [notify]);
   const moveToDead = useCallback((lead) => { setLeads(prev => prev.filter(l => l.id !== lead.id)); setDeadLeads(prev => [...prev, { ...lead, deadDate: new Date().toISOString() }]); notify(` ${lead.businessName} → Dead`); }, [notify]);
   const restoreFromDNC = useCallback((lead) => { setDncList(prev => prev.filter(l => l.id !== lead.id)); setLeads(prev => [...prev, { ...lead, restoredAt: new Date().toISOString() }]); notify(` ${lead.businessName} restored`); }, [notify]);
@@ -871,7 +923,7 @@ export function CRMProvider({ children }) {
       modals, openModal, closeModal, closeAllModals,
       todaysCalls, progress, hotLeads, activeGolfCourse, followUps, overdueCount, analytics, todaysSales, weekSales, quotaStats, outreachReadyCount, recentAudits,
       importJobs, setImportJobs,
-      notify, tallyCall, openEmailComposer, quickLogEmail, addLead, updateLead, findLeadEmail, moveToDNC, moveToDead, restoreFromDNC, restoreFromDead, 
+      notify, tallyCall, openEmailComposer, quickLogEmail, addLead, updateLead, findLeadEmail, bulkFindLeadEmails, moveToDNC, moveToDead, restoreFromDNC, restoreFromDead, 
       importGooglePlacesLeads, importFacebookLeads, enrichExistingLeads, generateLeadAudit, updateOutreachStatus,
       convertLead, unconvertLead, deleteToTrash, restoreFromTrash, emptyTrash,
       deleteCall, updateCall, addGolfCourse, updateGolfCourse, deleteGolfCourse, recordSale, updateSale, deleteSale, getCurrentList, clearAllData,

@@ -136,7 +136,7 @@ export function SettingsModal() {
 }
 
 export function ImportModal() {
-  const { modals, closeModal, setLeads, settings, notify, importGooglePlacesLeads, importFacebookLeads, enrichExistingLeads, golfCourses, importJobs, setImportJobs } = useCRM();
+  const { modals, closeModal, setLeads, settings, notify, importGooglePlacesLeads, importFacebookLeads, enrichExistingLeads, bulkFindLeadEmails, golfCourses, importJobs, setImportJobs } = useCRM();
   const [data, setData] = useState('');
   const [facebookData, setFacebookData] = useState('');
   const [placesForm, setPlacesForm] = useState({
@@ -155,9 +155,13 @@ export function ImportModal() {
     golfCourseId: 'all',
     marketKey: 'renton'
   });
+  const [emailDiscoveryForm, setEmailDiscoveryForm] = useState({
+    golfCourseId: 'all'
+  });
   const [isImportingPlaces, setIsImportingPlaces] = useState(false);
   const [isImportingFacebook, setIsImportingFacebook] = useState(false);
   const [isEnriching, setIsEnriching] = useState(false);
+  const [isDiscoveringEmails, setIsDiscoveringEmails] = useState(false);
   if (!modals.import) return null;
   const findGolfCourseIdByName = (value = '') => {
     const normalized = value.trim().toLowerCase();
@@ -287,6 +291,19 @@ export function ImportModal() {
       setIsEnriching(false);
     }
   };
+  const doEmailDiscovery = async () => {
+    setIsDiscoveringEmails(true);
+    try {
+      await bulkFindLeadEmails({
+        golfCourseId: emailDiscoveryForm.golfCourseId,
+        onlyMissingEmail: true
+      });
+    } catch (error) {
+      notify(` ${error.message || 'Bulk email discovery failed'}`);
+    } finally {
+      setIsDiscoveringEmails(false);
+    }
+  };
   return (
     <Modal onClose={() => closeModal('import')}>
       <ModalBox>
@@ -394,6 +411,26 @@ export function ImportModal() {
           <div style={{ display: 'flex', gap: 12, marginTop: 14 }}>
             <button onClick={doEnrichment} disabled={isEnriching} style={{ ...buttonBase, flex: 1, background: colors.warning, color: '#000' }}>
               {isEnriching ? 'Enriching...' : 'Run Enrichment'}
+            </button>
+          </div>
+        </div>
+        <div style={{ border: `1px solid ${colors.border}`, borderRadius: 12, padding: 16, marginBottom: 16, background: colors.bgCard }}>
+          <h3 style={{ color: colors.text, marginBottom: 12, fontSize: 15 }}>Bulk Email Discovery</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 12 }}>
+            <div>
+              <label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>Scope</label>
+              <select value={emailDiscoveryForm.golfCourseId} onChange={e => setEmailDiscoveryForm(f => ({ ...f, golfCourseId: e.target.value }))} style={inputBase}>
+                <option value="all">All Markets</option>
+                {golfCourses.map(gc => <option key={gc.id} value={gc.id}>{gc.name}</option>)}
+              </select>
+            </div>
+          </div>
+          <div style={{ marginTop: 10, color: colors.textDim, fontSize: 12 }}>
+            Scans websites for leads that are still missing email addresses and saves any discovered contact email back to the lead record.
+          </div>
+          <div style={{ display: 'flex', gap: 12, marginTop: 14 }}>
+            <button onClick={doEmailDiscovery} disabled={isDiscoveringEmails} style={{ ...buttonBase, flex: 1, background: colors.primary, color: '#fff' }}>
+              {isDiscoveringEmails ? 'Discovering...' : 'Find Emails for Missing Leads'}
             </button>
           </div>
         </div>

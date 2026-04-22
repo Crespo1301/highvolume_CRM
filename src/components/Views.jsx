@@ -494,6 +494,12 @@ export function ListView({ type }) {
                     <IconPhone size={16} style={{ marginRight: 8 }} /> Log Call
                   </button>
 
+                  {lead.email && (
+                    <button onClick={() => openEmailComposer(lead)} style={{ ...buttonBase, background: colors.primary, color: '#fff', fontWeight: 800 }}>
+                      Draft Email
+                    </button>
+                  )}
+
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                     <button onClick={() => setFollowUpDays(2)} style={{ ...buttonBase, background: colors.warning, color: '#001018', fontWeight: 800 }}>
                       <IconFlag size={16} style={{ marginRight: 8 }} /> Follow-up
@@ -564,6 +570,12 @@ export function ListView({ type }) {
                 <div>
                   <div style={{ fontWeight: '600', fontSize: 14 }}>{item.leadName || item.to}</div>
                   {item.subject && <div style={{ color: colors.textMuted, fontSize: 12 }}>{item.subject}</div>}
+                  {(item.sequenceLabel || item.scheduledFollowUp) && (
+                    <div style={{ color: colors.textDim, fontSize: 11, marginTop: 4 }}>
+                      {item.sequenceLabel || 'Email'}
+                      {item.scheduledFollowUp ? ` â€¢ next touch ${formatFollowUpDisplay(item.scheduledFollowUp)}` : ''}
+                    </div>
+                  )}
                 </div>
                 <div style={{ color: colors.textDim, fontSize: 11 }}>{formatDateTime(item.sentAt)}</div>
               </div>

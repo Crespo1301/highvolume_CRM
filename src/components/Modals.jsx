@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useCRM } from '../context/CRMContext';
 import { colors, buttonBase, inputBase } from '../utils/theme.jsx';
-import { formatDate, formatFollowUpDisplay, formatDateTime, formatDateForInput, formatDateDisplay, isOverdue, generateId, INDUSTRIES, SOURCES, parseDateInput, SALE_TYPES, MARKET_PRESETS, WEBSITE_STATUS_OPTIONS, OUTREACH_STATUS_OPTIONS, scoreLead, classifyPriorityFromScore } from '../utils/helpers';
+import { formatDate, formatFollowUpDisplay, formatDateTime, formatDateForInput, formatDateDisplay, isOverdue, generateId, INDUSTRIES, SOURCES, parseDateInput, SALE_TYPES, MARKET_PRESETS, WEBSITE_STATUS_OPTIONS, OUTREACH_STATUS_OPTIONS, scoreLead, classifyPriorityFromScore, EMAIL_SEQUENCE_STEPS, generateEmailDraft, getEmailSequenceStep } from '../utils/helpers';
 import { IconX } from './Icons';
 import { EnhancedHelpModal } from './HelpPanel';
 
@@ -777,6 +777,7 @@ export function ComposeEmailModal() {
   if (!draft || !form) return null;
 
   const updateForm = (patch) => setForm(prev => ({ ...prev, ...patch }));
+  const selectedStep = getEmailSequenceStep(form.sequenceStep || 'intro');
 
   const copyText = async (value, label) => {
     try {
@@ -795,6 +796,19 @@ export function ComposeEmailModal() {
     window.location.href = `mailto:${encodeURIComponent(form.to || '')}?${query.toString()}`;
   };
 
+  const refreshDraftForStep = (sequenceStep) => {
+    const nextDraft = generateEmailDraft(form.leadSnapshot || {}, { sequenceStep });
+    setForm(prev => ({
+      ...prev,
+      subject: nextDraft.subject,
+      body: nextDraft.body,
+      sequenceStep: nextDraft.sequenceStep,
+      sequenceLabel: nextDraft.sequenceLabel,
+      followUpDelayDays: nextDraft.suggestedDelayDays,
+      scheduleFollowUp: nextDraft.suggestedDelayDays > 0
+    }));
+  };
+
   return (
     <Modal onClose={() => closeModal('composeEmail')}>
       <ModalBox maxWidth={760}>
@@ -811,6 +825,27 @@ export function ComposeEmailModal() {
         </div>
 
         <div style={{ display: 'grid', gap: 14 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+            <div>
+              <label style={{ display: 'block', color: colors.textMuted, marginBottom: 6, fontSize: 12 }}>Sequence Step</label>
+              <select value={form.sequenceStep || 'intro'} onChange={e => refreshDraftForStep(e.target.value)} style={inputBase}>
+                {EMAIL_SEQUENCE_STEPS.map(step => (
+                  <option key={step.value} value={step.value}>{step.label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label style={{ display: 'block', color: colors.textMuted, marginBottom: 6, fontSize: 12 }}>Next Follow-up</label>
+              <div style={{ ...inputBase, display: 'flex', alignItems: 'center' }}>
+                <span style={{ color: form.scheduleFollowUp ? colors.text : colors.textDim }}>
+                  {form.scheduleFollowUp
+                    ? `${form.followUpDelayDays || selectedStep.defaultDelayDays || 0} day${(form.followUpDelayDays || selectedStep.defaultDelayDays || 0) === 1 ? '' : 's'} after send`
+                    : 'No automatic follow-up'}
+                </span>
+              </div>
+            </div>
+          </div>
+
           <div>
             <label style={{ display: 'block', color: colors.textMuted, marginBottom: 6, fontSize: 12 }}>To</label>
             <input
@@ -838,6 +873,24 @@ export function ComposeEmailModal() {
               onChange={e => updateForm({ body: e.target.value })}
               style={{ ...inputBase, minHeight: 240, resize: 'vertical', lineHeight: 1.5 }}
             />
+          </div>
+
+          <div>
+            <div style={{ color: colors.textMuted, marginBottom: 8, fontSize: 12 }}>Auto-schedule next touch</div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {[0, 2, 4, 7, 14].map(days => {
+                const isActive = (form.scheduleFollowUp ? form.followUpDelayDays : 0) === days;
+                return (
+                  <button
+                    key={days}
+                    onClick={() => updateForm({ scheduleFollowUp: days > 0, followUpDelayDays: days })}
+                    style={{ ...buttonBase, padding: '8px 12px', background: isActive ? colors.primary : colors.bgCard, color: isActive ? '#fff' : colors.text }}
+                  >
+                    {days === 0 ? 'No follow-up' : `${days}d`}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
 

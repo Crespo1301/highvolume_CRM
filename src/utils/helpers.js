@@ -208,23 +208,86 @@ export const generateAuditTalkingPoints = (lead = {}) => {
   return points.length ? points : ['Site is in decent shape, so focus on conversion gains and stronger lead capture'];
 };
 
-export const generateEmailDraft = (lead = {}) => {
+export const EMAIL_SEQUENCE_STEPS = [
+  { value: 'intro', label: 'Intro', defaultDelayDays: 2 },
+  { value: 'followup_1', label: 'Follow-up 1', defaultDelayDays: 4 },
+  { value: 'followup_2', label: 'Follow-up 2', defaultDelayDays: 7 },
+  { value: 'breakup', label: 'Breakup', defaultDelayDays: 0 }
+];
+
+export const getEmailSequenceStep = (value = 'intro') => (
+  EMAIL_SEQUENCE_STEPS.find(step => step.value === value) || EMAIL_SEQUENCE_STEPS[0]
+);
+
+export const getNextEmailSequenceStep = (value = 'intro') => {
+  const currentIndex = EMAIL_SEQUENCE_STEPS.findIndex(step => step.value === value);
+  if (currentIndex === -1) return EMAIL_SEQUENCE_STEPS[0];
+  return EMAIL_SEQUENCE_STEPS[Math.min(currentIndex + 1, EMAIL_SEQUENCE_STEPS.length - 1)];
+};
+
+export const generateEmailDraft = (lead = {}, options = {}) => {
   const businessName = lead.businessName || 'your business';
   const city = lead.city ? ` in ${lead.city}` : '';
   const angle = generateOutreachAngle(lead);
-  const subject = `Quick website idea for ${businessName}`;
-  const body = [
-    `Hi,`,
-    ``,
-    `I came across ${businessName}${city} and noticed a few opportunities on the web presence side.`,
-    angle,
-    `I help businesses tighten up their site, improve trust, and turn more visitors into calls or inquiries.`,
-    `If helpful, I can put together a quick no-pressure audit with a few specific suggestions.`,
-    ``,
-    `Best,`,
-  ].join('\n');
+  const sequenceStep = getEmailSequenceStep(options.sequenceStep || lead.lastEmailSequenceStep || 'intro');
+  let subject = `Quick website idea for ${businessName}`;
+  let body = '';
 
-  return { subject, body };
+  if (sequenceStep.value === 'intro') {
+    body = [
+      `Hi,`,
+      ``,
+      `I came across ${businessName}${city} and noticed a few opportunities on the web presence side.`,
+      angle,
+      `I help businesses tighten up their site, improve trust, and turn more visitors into calls or inquiries.`,
+      `If helpful, I can put together a quick no-pressure audit with a few specific suggestions.`,
+      ``,
+      `Best,`,
+    ].join('\n');
+  } else if (sequenceStep.value === 'followup_1') {
+    subject = `Following up on ${businessName}`;
+    body = [
+      `Hi,`,
+      ``,
+      `Wanted to follow up in case my last note got buried.`,
+      `I still think ${businessName}${city} has a strong opportunity to improve its online presence and make it easier for new customers to reach out.`,
+      `A few areas that stood out to me were: ${angle.toLowerCase()}`,
+      `If you want, I can send over a few quick suggestions specific to the site and local search visibility.`,
+      ``,
+      `Best,`,
+    ].join('\n');
+  } else if (sequenceStep.value === 'followup_2') {
+    subject = `${businessName} website follow-up`;
+    body = [
+      `Hi,`,
+      ``,
+      `Sending one more quick follow-up.`,
+      `I work with local businesses that want a cleaner website, stronger trust signals, and more direct calls or inquiries from their web presence.`,
+      `For ${businessName}${city}, the biggest angle I noticed was this: ${angle}`,
+      `If a short audit would be useful, I can put one together and send it over.`,
+      ``,
+      `Best,`,
+    ].join('\n');
+  } else {
+    subject = `Close the loop on ${businessName}`;
+    body = [
+      `Hi,`,
+      ``,
+      `I wanted to send one last note and close the loop.`,
+      `I reached out because ${businessName}${city} looks like it could benefit from a stronger web presence and clearer conversion flow.`,
+      `If improving the site or getting more leads online becomes a priority, I would be happy to share a few ideas.`,
+      ``,
+      `Best,`,
+    ].join('\n');
+  }
+
+  return {
+    subject,
+    body,
+    sequenceStep: sequenceStep.value,
+    sequenceLabel: sequenceStep.label,
+    suggestedDelayDays: sequenceStep.defaultDelayDays
+  };
 };
 
 export const generateOutreachAngle = (lead = {}) => {

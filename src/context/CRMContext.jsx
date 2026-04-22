@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
-import { STORAGE_KEYS, loadData, saveData, generateId, isTodayOrPast, isOverdue, DEFAULT_SETTINGS, SORT_OPTIONS, MARKET_PRESETS, normalizeGooglePlaceLead, normalizeFacebookLead, scoreLead, classifyPriorityFromScore, normalizeWebsiteStatus, generateOutreachAngle, generateWebsiteAudit, generateAuditSummary, generateAuditTalkingPoints, generateEmailDraft } from '../utils/helpers';
+import { STORAGE_KEYS, loadData, saveData, generateId, isTodayOrPast, isOverdue, DEFAULT_SETTINGS, SORT_OPTIONS, MARKET_PRESETS, normalizeGooglePlaceLead, normalizeFacebookLead, scoreLead, classifyPriorityFromScore, normalizeWebsiteStatus, generateOutreachAngle, generateWebsiteAudit, generateAuditSummary, generateAuditTalkingPoints, generateEmailDraft, getEmailSequenceStep, getNextEmailSequenceStep } from '../utils/helpers';
 
 const CRMContext = createContext(null);
 
@@ -65,6 +65,12 @@ export function CRMProvider({ children }) {
   const overdueCount = useMemo(() => leads.filter(l => l.followUp && isOverdue(l.followUp)).length, [leads]);
   const outreachReadyCount = useMemo(() => leads.filter(l => ['hot', 'normal'].includes(l.priority) && !!(l.phone || l.email)).length, [leads]);
   const recentAudits = useMemo(() => audits.slice(0, 5), [audits]);
+
+  const buildFollowUpDate = useCallback((days = 0) => {
+    const date = new Date();
+    date.setDate(date.getDate() + days);
+    return `${date.toISOString().split('T')[0]}T12:00:00`;
+  }, []);
 
   // Today's sales stats
   const todaysSales = useMemo(() => {
@@ -343,14 +349,21 @@ export function CRMProvider({ children }) {
       return false;
     }
 
-    const draft = generateEmailDraft(lead);
+    const sequenceStep = getNextEmailSequenceStep(lead.lastEmailSequenceStep || 'intro');
+    const stepMeta = lead.emailCount ? sequenceStep : getEmailSequenceStep('intro');
+    const draft = generateEmailDraft(lead, { sequenceStep: stepMeta.value });
     openModal('composeEmail', {
       id: generateId(),
       leadId: lead.id,
       leadName: lead.businessName || '',
+      leadSnapshot: lead,
       to: lead.email || '',
       subject: draft.subject,
       body: draft.body,
+      sequenceStep: draft.sequenceStep,
+      sequenceLabel: draft.sequenceLabel,
+      scheduleFollowUp: draft.suggestedDelayDays > 0,
+      followUpDelayDays: draft.suggestedDelayDays,
       createdAt: new Date().toISOString()
     });
     return true;
@@ -363,6 +376,11 @@ export function CRMProvider({ children }) {
     }
 
     const now = new Date().toISOString();
+    const stepMeta = getEmailSequenceStep(draft.sequenceStep || 'intro');
+    const nextStep = getNextEmailSequenceStep(stepMeta.value);
+    const nextFollowUp = draft.scheduleFollowUp && Number(draft.followUpDelayDays) > 0
+      ? buildFollowUpDate(Number(draft.followUpDelayDays))
+      : '';
     const emailEntry = {
       id: generateId(),
       leadId: draft.leadId,
@@ -370,15 +388,27 @@ export function CRMProvider({ children }) {
       to: draft.to,
       subject: draft.subject || '',
       body: draft.body || '',
+      sequenceStep: stepMeta.value,
+      sequenceLabel: stepMeta.label,
+      nextSuggestedStep: nextStep.value,
+      scheduledFollowUp: nextFollowUp,
       sentAt: now
     };
 
     setEmails(prev => [emailEntry, ...prev]);
-    setLeads(prev => prev.map(l => l.id === draft.leadId ? { ...l, lastEmailed: now, emailCount: (l.emailCount || 0) + 1, outreachStatus: 'contacted' } : l));
+    setLeads(prev => prev.map(l => l.id === draft.leadId ? {
+      ...l,
+      lastEmailed: now,
+      emailCount: (l.emailCount || 0) + 1,
+      lastEmailSequenceStep: stepMeta.value,
+      nextEmailSequenceStep: nextStep.value,
+      followUp: nextFollowUp || l.followUp,
+      outreachStatus: nextFollowUp ? 'follow_up' : 'contacted'
+    } : l));
     closeModal('composeEmail');
     notify(`Email logged for ${draft.leadName || draft.to}`);
     return true;
-  }, [notify]);
+  }, [buildFollowUpDate, notify]);
 
   const generateLeadAudit = useCallback((lead) => {
     const now = new Date().toISOString();

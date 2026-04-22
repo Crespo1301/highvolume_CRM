@@ -46,7 +46,7 @@ export function EnhancedHelpModal() {
           <div style={{ color: colors.text, fontSize: 14, fontWeight: '600' }}>Recommended daily workflow</div>
           <div style={{ color: colors.textMuted, fontSize: 13 }}>1. Import from Google Places, Facebook, CSV, or JSON.</div>
           <div style={{ color: colors.textMuted, fontSize: 13 }}>2. Run enrichment to improve website status, location data, priority, and outreach angle.</div>
-          <div style={{ color: colors.textMuted, fontSize: 13 }}>3. Work the Outreach queue, generate audits, draft emails, and log calls or sent emails as activity happens.</div>
+          <div style={{ color: colors.textMuted, fontSize: 13 }}>3. Work the Outreach queue, generate audits, draft emails, and use the sequence steps to schedule the next touch automatically.</div>
           <div style={{ color: colors.textMuted, fontSize: 13 }}>4. Use Follow-ups, Emails, and Recent Audits to stay consistent through the day.</div>
           <div style={{ color: colors.textMuted, fontSize: 13 }}>5. On mobile, use the app tabs and buttons normally. Desktop shortcuts remain the fastest option.</div>
         </div>

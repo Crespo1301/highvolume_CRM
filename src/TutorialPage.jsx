@@ -78,12 +78,14 @@ const sections = [
     title: 'How the email workflow should be used',
     body: [
       'The email action now opens a draft composer for the selected lead. It pre-fills the recipient, subject, and body so you can review or edit the message before sending.',
-      'It still does not send through Gmail automatically yet. The goal right now is to make outbound email faster while keeping a clean log of who you contacted.'
+      'The composer also supports an email sequence flow, so you can move from intro to follow-up 1, follow-up 2, and breakup emails while automatically scheduling the next touch.'
     ],
     bullets: [
       'Click the email action on a lead with an email address',
+      'Choose the right sequence step for the message you are sending',
       'Edit the recipient, subject, or body if needed',
       'Use Open Mail App to launch your default email client with the draft filled in',
+      'Pick whether the CRM should automatically set the next follow-up date',
       'Use Log as Sent after you actually send the message so the Emails tab stays accurate',
       'Logging the email moves the lead into the contacted state'
     ]

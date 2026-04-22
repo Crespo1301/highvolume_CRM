@@ -18,6 +18,7 @@ export function useKeyboard() {
       if (e.key === 'Escape') { closeAllModals(); setSearchQuery(''); if (['addLead'].includes(view)) setView('dashboard'); return; }
 
       const list = getCurrentList();
+      const currentItem = list[selectedIndex] || list[0] || null;
       const key = e.key.toLowerCase();
 
       // Navigation shortcuts
@@ -87,8 +88,14 @@ export function useKeyboard() {
         case 'e':
           e.preventDefault();
           // Open draft composer for selected lead
-          if (['leads', 'followups', 'outreach'].includes(view) && list[selectedIndex] && list[selectedIndex].email) {
-            openEmailComposer(list[selectedIndex]);
+          if (['leads', 'followups', 'outreach'].includes(view)) {
+            if (!currentItem) {
+              notify('No lead is currently selected');
+            } else if (!currentItem.email) {
+              notify(`No email found for ${currentItem.businessName || 'this lead'}`);
+            } else {
+              openEmailComposer(currentItem);
+            }
           }
           break;
         case 'enter':

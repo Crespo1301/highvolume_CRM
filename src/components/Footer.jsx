@@ -6,26 +6,28 @@ export function Footer() {
   const { openModal } = useCRM();
 
   return (
-    <footer style={{ marginTop: 32, paddingTop: 20, borderTop: `1px solid ${colors.border}` }}>
+    <footer className="app-footer" style={{ marginTop: 32, paddingTop: 20, borderTop: `1px solid ${colors.border}` }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+        <div className="app-footer__top" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
           <div style={{ color: colors.textDim, fontSize: 12 }}>
             © 2026 <a href="https://carloscrespo.info" target="_blank" rel="noopener noreferrer" style={{ color: colors.primary, textDecoration: 'none' }}>Carlos Crespo</a>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 12 }}>
+          <div className="app-footer__links" style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 12 }}>
             <button onClick={() => openModal('privacy')} style={{ background: 'transparent', border: 'none', color: colors.textMuted, cursor: 'pointer', fontFamily: 'inherit', fontSize: 12 }}>Privacy</button>
             <button onClick={() => openModal('terms')} style={{ background: 'transparent', border: 'none', color: colors.textMuted, cursor: 'pointer', fontFamily: 'inherit', fontSize: 12 }}>Terms</button>
             <button onClick={() => openModal('settings')} style={{ background: 'transparent', border: 'none', color: colors.textMuted, cursor: 'pointer', fontFamily: 'inherit', fontSize: 12 }}>Settings</button>
+            <a href="/tutorial" style={{ color: colors.textMuted, textDecoration: 'none' }}>Tutorial</a>
             <a href="https://github.com/Crespo1301" target="_blank" rel="noopener noreferrer" style={{ color: colors.textMuted, textDecoration: 'none' }}>GitHub</a>
           </div>
         </div>
         
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-          <div style={{ color: colors.textDim, fontSize: 11 }}>
+        <div className="app-footer__bottom" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+          <div className="app-footer__shortcuts" style={{ color: colors.textDim, fontSize: 11 }}>
             <Shortcut k="/" label="Help" />
             <Shortcut k="+" label="Add Lead" />
             <Shortcut k="S" label="Settings" />
             <Shortcut k="F" label="Follow-ups" />
+            <Shortcut k="O" label="Outreach" />
             <Shortcut k="G" label="Markets" />
             <Shortcut k="T" label="Trash" />
             <Shortcut k="I" label="Import" />

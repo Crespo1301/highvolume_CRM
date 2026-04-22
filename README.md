@@ -1,309 +1,253 @@
 <div align="center">
 
-# Cold Call CRM
+# HighVolume CRM
 
-**A keyboard-first customer relationship management system built for high-volume cold calling operations**
+Keyboard-first CRM for high-volume outreach, local lead generation, follow-up management, and lightweight audit prep.
 
-[![React](https://img.shields.io/badge/React-18.x-61DAFB?logo=react&logoColor=white)](https://reactjs.org/)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
-
-[Features](#features) • [Installation](#installation) • [Usage](#usage) • [Keyboard Shortcuts](#keyboard-shortcuts) • [Documentation](#documentation) • [Contributing](#contributing)
+[Live App](https://highvolume-crm.vercel.app) • [Features](#features) • [Getting Started](#getting-started) • [Workflow](#workflow) • [Keyboard Shortcuts](#keyboard-shortcuts)
 
 </div>
-
----
 
 ## Overview
 
-Cold Call CRM is a specialized customer relationship management tool designed for sales teams conducting high-volume cold calling campaigns, particularly in the golf course advertising industry. Built with a keyboard-first approach, it enables sales representatives to manage 200+ daily calls while keeping one hand free for the phone.
+HighVolume CRM is a fast outreach workspace built for operators who need to find leads, work them quickly, and stay organized while calling, emailing, and following up.
 
-### Why Cold Call CRM?
+The current product supports:
 
-- **Speed-Optimized**: Every action accessible via right-hand keyboard shortcuts
-- **Zero Learning Curve**: Intuitive numpad-based navigation mirrors phone dialpad
-- **Offline-First**: All data stored locally—no internet required during calls
-- **Team-Ready**: Export/import functionality for seamless territory handoffs
-
----
+- Google Places lead imports
+- Facebook-style lead intake
+- CSV and JSON imports
+- Lead enrichment and scoring
+- Outreach queue management
+- Rule-based website audits
+- Email draft generation and email logging
+- Follow-up tracking, sales tracking, and performance analytics
 
 ## Features
 
-### Core Functionality
+### Lead generation and intake
 
-| Feature | Description |
-|---------|-------------|
-| **One-Touch Tallying** | Press `SPACE` to log calls instantly |
-| **Daily Goal Tracking** | Visual progress ring with customizable targets |
-| **Lead Management** | Full CRUD operations with priority levels |
-| **Follow-up Scheduling** | Automated overdue alerts and reminders |
+- Import local businesses directly from Google Places
+- Paste Facebook page leads into the CRM in a structured format
+- Import CSV or JSON lead lists with richer fields like website status, city, region, source, and notes
+- Track recent import jobs inside the app
 
-### Advanced Capabilities
+### Lead quality and enrichment
 
-- **Golf Course Tracking**: Manage multiple course assignments with contact details
-- **Call History**: Per-lead interaction timeline with editable entries
-- **Trash & Recovery**: Soft-delete with full restoration capability
-- **Analytics Dashboard**: Daily, weekly, and monthly performance metrics
-- **Bulk Operations**: CSV import/export for team collaboration
+- Website status normalization: `unknown`, `none`, `facebookOnly`, `outdated`, `good`
+- Automatic priority scoring and priority labels
+- Outreach angle generation for every enriched lead
+- Bulk enrichment for older leads already in the CRM
 
-### Data Management
+### Outreach workflow
 
-- **Individual Tab Export**: Share DNC or dead lead lists with team members
-- **Full Backup**: JSON export of complete database
-- **Import Flexibility**: Accepts CSV or JSON formats
+- Dedicated `Outreach` queue for the best call/email-ready leads
+- Outreach statuses: `new`, `audit_ready`, `contacted`, `follow_up`, `replied`
+- Quick email logging with generated subject and body
+- Follow-up scheduling and overdue visibility
 
----
+### Audit workflow
 
-## Installation
+- Deterministic website audits based on website status and lead context
+- Audit summaries and talking points stored with the CRM
+- Recent audits visible from the dashboard
+
+### Performance tracking
+
+- Daily calls, goals, quota, and sales
+- Email and audit counts in analytics
+- Follow-up visibility and recent activity
+
+## Getting Started
 
 ### Prerequisites
 
-- Node.js 18.0 or higher
-- npm 9.0+ or yarn 1.22+
-- Modern browser (Chrome, Firefox, Safari, Edge)
+- Node.js `20.19+` or `22.12+` recommended
+- npm
+- A Google Cloud API key with `Places API (New)` enabled if you want Google Places imports
 
-### Quick Start
+### Install
 
 ```bash
-# Clone the repository
-git clone https://github.com/Crespo1301/cold-call-crm.git
-cd cold-call-crm
-
-# Install dependencies
 npm install
+```
 
-# Start development server
+### Local development
+
+```bash
 npm run dev
 ```
 
-### Production Build
+### Build
 
 ```bash
-# Create optimized build
 npm run build
-
-# Preview production build
-npm run preview
 ```
 
-### Deployment
+## Environment Variables
 
-#### Vercel (Recommended)
+Create a local env file for development:
 
 ```bash
-# Install Vercel CLI
-npm install -g vercel
-
-# Deploy
-vercel --prod
+GOOGLE_PLACES_API_KEY=your_key_here
 ```
 
-#### Manual Deployment
+For Vercel deployments, set the same variable in the project environment settings.
 
-1. Run `npm run build`
-2. Deploy contents of `dist/` folder to any static hosting service
+Important:
 
----
+- The Google Cloud project must have `Places API (New)` enabled
+- Billing must be enabled in Google Cloud
+- API key restrictions must allow the Places API requests your deployment makes
 
-## Usage
+## Workflow
 
-### Getting Started
+### Recommended daily flow
 
-1. **Set Your Daily Goal**: Press `S` to open Settings and configure your target (default: 200 calls)
+1. Import fresh leads from Google Places for one market and one industry.
+2. Add Facebook leads you found manually.
+3. Run bulk enrichment for missing website status or location data.
+4. Open the `Outreach` queue and focus on `hot` and `normal` leads.
+5. Generate audits for strong prospects.
+6. Call or email leads from the same CRM.
+7. Set follow-ups and keep the queue moving.
 
-2. **Add a Golf Course** (Optional): Press `G` to manage courses, then add your assigned course
+### Importing Google Places leads
 
-3. **Import Leads**: Press `I` to import leads from CSV, or press `+` to add manually
+Open `Import` and use:
 
-4. **Start Calling**: Navigate with arrow keys, press `SPACE` to tally each call
+- Market preset
+- Industry
+- Max results
+- Optional market assignment
 
-### Workflow Example
+The CRM will normalize:
 
+- business name
+- address
+- phone
+- website
+- rating and review count
+- city and region
+- source
+- priority score
+- outreach angle
+
+### Importing Facebook leads
+
+Use the `Facebook Lead Intake` section in Import and paste one lead per line:
+
+```text
+Business Name | Facebook URL | Phone | Email | Website | City | Region
 ```
-1. Press 3 → View leads list
-2. Use ↑↓ → Navigate to lead
-3. Press 5 → View lead details (phone number, notes)
-4. Make your call
-5. Press SPACE → Tally the call
-6. Press → → Mark as dead (if no answer/not interested)
-   OR Press ← → Mark as DNC (if requested)
-   OR Set follow-up → If callback needed
-7. Repeat
-```
 
-### Managing Follow-ups
+You can also paste one JSON object per line.
 
-Follow-ups appear automatically on your dashboard when due. Overdue items are highlighted in red.
+### Running enrichment
 
-To set a follow-up:
-1. Press `5` or `Enter` on a lead to open details
-2. Click a quick-set button (1d, 2d, 3d, 5d, 7d, 14d, 30d)
-3. Or manually select a date
+Use `Bulk Lead Enrichment` when:
 
-### Team Handoffs
+- website status is missing
+- city or region is missing
+- older leads need updated scoring
+- you want fresh outreach angles
 
-When transitioning a territory to another team member:
+### Working the outreach queue
 
-1. Press `E` to open Export
-2. Export relevant lists:
-   - **DNC List**: Contacts who requested no calls
-   - **Dead Leads**: Exhausted or unqualified leads
-   - **Active Leads**: In-progress opportunities
-   - **Golf Courses**: Territory information
-3. Share CSV files with the new team member
-4. They import using `I`
+Open `Outreach` and focus on leads that have:
 
----
+- strong priority
+- phone, email, or Facebook presence
+- audit potential
+
+Use the lead detail view to:
+
+- generate an audit
+- change outreach status
+- log an email
+- set a follow-up
 
 ## Keyboard Shortcuts
 
-### Navigation (Right-Hand Optimized)
+### Navigation
 
-| Key | Action | Key | Action |
-|-----|--------|-----|--------|
-| `1` | Dashboard | `7` | DNC List |
-| `3` | Leads | `9` | Dead Leads |
-| `↑` `↓` | Navigate List | `F` | Follow-ups |
-| `C` | Call Log | `G` | Golf Courses |
-| `T` | Trash | `A` | Analytics |
+- `1` Dashboard
+- `3` Leads
+- `O` Outreach
+- `F` Follow-ups
+- `V` Converted
+- `7` DNC
+- `9` Dead
+- `C` Calls
+- `$` Sales
+- `G` Markets
+- `T` Trash
+- `A` Analytics
+- `-` Emails
 
 ### Actions
 
-| Key | Action |
-|-----|--------|
-| `SPACE` or `0` | Tally call (on selected lead or manual) |
-| `5` or `Enter` | View/edit details |
-| `←` or `4` | Move to DNC |
-| `→` or `6` | Move to Dead |
-| `Del` or `.` | Delete to Trash |
-| `+` | Add new lead |
-| `*` | Compose email |
-| `-` | View emails |
+- `SPACE` manual tally
+- `E` quick email
+- `Enter` open selected lead
+- `Left` move selected lead to DNC
+- `Right` move selected lead to Dead
+- `.` delete selected item
+- `+` add lead
+- `I` import
+- `X` export
+- `S` settings
+- `/` help
+- `Esc` close modal or clear focused interaction
 
-### Data & System
+## Mobile Support
 
-| Key | Action |
-|-----|--------|
-| `I` | Import data |
-| `E` | Export data |
-| `S` | Settings |
-| `/` or `?` | Help overlay |
-| `Esc` | Close modal/cancel |
+The product is still desktop-first for heavy keyboard-driven workflows, but the landing page and app shell are now tuned to behave better on smaller screens:
 
----
+- stacked header and stats on smaller widths
+- responsive nav grid
+- more flexible footer layout
+- single-column help overlay on phones
 
-## Documentation
+For best results:
 
-### Data Storage
+- use desktop or laptop for long calling sessions
+- use mobile for quick review, follow-ups, and basic CRM navigation
 
-All data persists in browser localStorage:
+## Deployment
 
-| Key | Contents |
-|-----|----------|
-| `crm_leads` | Active lead records |
-| `crm_dnc` | Do Not Call list |
-| `crm_dead` | Dead/exhausted leads |
-| `crm_trash` | Recoverable deleted items |
-| `crm_call_log` | Call history with timestamps |
-| `crm_stats` | Daily call tallies |
-| `crm_emails` | Email log |
-| `crm_golf_courses` | Course assignments |
-| `crm_settings` | User preferences |
+### Vercel
 
-### CSV Import Format
+This project is deployed on Vercel.
 
-The importer accepts CSV files with the following headers (case-insensitive):
+Deploy preview:
 
-```csv
-business name,contact,phone,email,address,website,industry,source,notes,priority
-Acme Corp,John Smith,555-1234,john@acme.com,123 Main St,acme.com,Retail,Google,Hot lead,hot
+```bash
+npx vercel deploy --yes
 ```
 
-**Required fields**: `business name` OR `phone` (minimum one)
+Deploy production:
 
-### Lead Priority Levels
+```bash
+npx vercel deploy --prod --yes
+```
 
-| Priority | Use Case |
-|----------|----------|
-| 🔥 Hot | High-interest prospects, prioritize callbacks |
-| Normal | Standard leads |
-| Low | Long-shot or lower-value prospects |
+## Current Product Notes
 
-### Call Outcomes
+The CRM currently supports lead intake, enrichment, outreach prep, audits, and tracking. It does not yet:
 
-When editing calls, available outcomes include:
-- Completed
-- Voicemail
-- No Answer
-- Callback
-- Interested
-- Not Interested
+- automatically send Gmail from inside the app
+- crawl Facebook directly
+- run scheduled lead collection by itself
+- automatically detect replies from inboxes
 
----
+Those are good next-phase automation targets.
 
-## Browser Support
+## Live Project
 
-| Browser | Version |
-|---------|---------|
-| Chrome | 90+ |
-| Firefox | 88+ |
-| Safari | 14+ |
-| Edge | 90+ |
-
-**Note**: localStorage must be enabled. Private/incognito mode may limit data persistence.
-
----
-
-## Contributing
-
-Contributions are welcome! Please read our contributing guidelines before submitting PRs.
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit changes (`git commit -m 'Add amazing feature'`)
-4. Push to branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
----
-
-## Privacy & Security
-
-- **100% Client-Side**: No data leaves your browser
-- **No Tracking**: Zero analytics or telemetry
-- **No Account Required**: Start using immediately
-- **Full Data Control**: Export or delete anytime
-
-For complete details, see the in-app Privacy Policy.
-
----
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
----
+- Production: [https://highvolume-crm.vercel.app](https://highvolume-crm.vercel.app)
 
 ## Author
 
-**Carlos Crespo**
-
-- Website: [carloscrespo.info](https://carloscrespo.info)
-- GitHub: [@Crespo1301](https://github.com/Crespo1301)
-
----
-
-## Acknowledgments
-
-- Built with [React](https://reactjs.org/)
-- Designed for the golf course advertising industry
-- Inspired by real-world high-volume sales operations
-
----
-
-<div align="center">
-
-**[⬆ Back to Top](#cold-call-crm)**
-
-Made with ☕ by Carlos Crespo
-
-</div>
+Carlos Crespo  
+[https://carloscrespo.info](https://carloscrespo.info)

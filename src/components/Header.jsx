@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { useCRM } from '../context/CRMContext';
 import { colors, buttonBase } from '../utils/theme.jsx';
 import { IconCalendar, IconTarget } from './Icons';
@@ -10,12 +11,14 @@ export function Header() {
 
   return (
     <>
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, paddingBottom: 20, borderBottom: `1px solid ${colors.border}` }}>
-        <div>
+      <header className="app-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, paddingBottom: 20, borderBottom: `1px solid ${colors.border}` }}>
+        <div className="app-header__brand">
           <h1 style={{ fontSize: 26, fontWeight: '750', letterSpacing: 0.2, marginBottom: 6 }}>
-            <span style={{ background: 'linear-gradient(90deg, #4dabf7, #69db7c)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-              HighVolume CRM
-            </span>
+            <Link to="/" style={{ display: 'inline-flex', alignItems: 'center', textDecoration: 'none' }}>
+              <span style={{ background: 'linear-gradient(90deg, #4dabf7, #69db7c)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                HighVolume CRM
+              </span>
+            </Link>
             {activeGolfCourse && (
               <span style={{ color: colors.accent, fontSize: 13, marginLeft: 12, fontWeight: '500', WebkitTextFillColor: colors.accent }}>
                 <IconTarget size={14} style={{ marginRight: 6 }} /> {activeGolfCourse.name}
@@ -29,7 +32,7 @@ export function Header() {
           </p>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+        <div className="app-header__stats" style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           {followUps.length > 0 && (
             <button onClick={() => setView('followups')} style={{ ...buttonBase, background: colors.bgCard, border: `1px solid ${overdueCount > 0 ? colors.danger : colors.warning}`, color: colors.text, fontWeight: '650' }}>
               <IconCalendar size={16} style={{ marginRight: 8 }} />

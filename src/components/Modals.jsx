@@ -1,8 +1,9 @@
 import React, { useState, useRef } from 'react';
 import { useCRM } from '../context/CRMContext';
 import { colors, buttonBase, inputBase } from '../utils/theme.jsx';
-import { formatDate, formatFollowUpDisplay, formatDateTime, formatDateForInput, formatDateDisplay, isOverdue, generateId, INDUSTRIES, SOURCES, parseDateInput, SALE_TYPES } from '../utils/helpers';
+import { formatDate, formatFollowUpDisplay, formatDateTime, formatDateForInput, formatDateDisplay, isOverdue, generateId, INDUSTRIES, SOURCES, parseDateInput, SALE_TYPES, MARKET_PRESETS, WEBSITE_STATUS_OPTIONS, OUTREACH_STATUS_OPTIONS, scoreLead, classifyPriorityFromScore } from '../utils/helpers';
 import { IconX } from './Icons';
+import { EnhancedHelpModal } from './HelpPanel';
 
 const Modal = ({ children, onClose }) => {
   React.useEffect(() => {
@@ -135,42 +136,294 @@ export function SettingsModal() {
 }
 
 export function ImportModal() {
-  const { modals, closeModal, setLeads, settings, notify } = useCRM();
+  const { modals, closeModal, setLeads, settings, notify, importGooglePlacesLeads, importFacebookLeads, enrichExistingLeads, golfCourses, importJobs, setImportJobs } = useCRM();
   const [data, setData] = useState('');
+  const [facebookData, setFacebookData] = useState('');
+  const [placesForm, setPlacesForm] = useState({
+    marketKey: 'renton',
+    industry: 'Contractor / Home Services',
+    maxResults: 10,
+    golfCourseId: settings.activeGolfCourse || ''
+  });
+  const [facebookForm, setFacebookForm] = useState({
+    marketKey: 'renton',
+    industry: 'Contractor / Home Services',
+    golfCourseId: settings.activeGolfCourse || ''
+  });
+  const [enrichmentForm, setEnrichmentForm] = useState({
+    target: 'missingWebsiteStatus',
+    golfCourseId: 'all',
+    marketKey: 'renton'
+  });
+  const [isImportingPlaces, setIsImportingPlaces] = useState(false);
+  const [isImportingFacebook, setIsImportingFacebook] = useState(false);
+  const [isEnriching, setIsEnriching] = useState(false);
   if (!modals.import) return null;
+  const findGolfCourseIdByName = (value = '') => {
+    const normalized = value.trim().toLowerCase();
+    if (!normalized) return '';
+    return golfCourses.find(gc => (gc.name || '').trim().toLowerCase() === normalized)?.id || '';
+  };
+
+  const buildImportedLead = (draft = {}) => {
+    const priorityScore = scoreLead(draft);
+    return {
+      id: generateId(),
+      createdAt: new Date().toISOString(),
+      callCount: 0,
+      callHistory: [],
+      websiteStatus: draft.websiteStatus || 'unknown',
+      source: draft.source || 'Import',
+      golfCourseId: draft.golfCourseId || settings.activeGolfCourse,
+      priorityScore,
+      priority: draft.priority || classifyPriorityFromScore(priorityScore),
+      ...draft,
+    };
+  };
+
   const doImport = () => {
     try {
       const json = JSON.parse(data);
-      if (json.leads) { setLeads(p => [...p, ...json.leads.map(l => ({ ...l, id: generateId() }))]); notify(' Imported!'); closeModal('import'); setData(''); return; }
+      if (json.leads) {
+        const imported = json.leads.map(l => buildImportedLead(l));
+        setLeads(p => [...p, ...imported]);
+        setImportJobs(prev => [{
+          id: generateId(),
+          sourceType: 'json',
+          label: 'Manual JSON import',
+          createdAt: new Date().toISOString(),
+          addedCount: imported.length,
+          skippedCount: 0,
+          golfCourseId: settings.activeGolfCourse || ''
+        }, ...prev].slice(0, 25));
+        notify(' Imported!');
+        closeModal('import');
+        setData('');
+        return;
+      }
     } catch { /* not JSON */ }
     const lines = data.trim().split('\n');
     if (lines.length < 2) { notify(' No data'); return; }
     const headers = lines[0].split(',').map(h => h.replace(/"/g, '').trim().toLowerCase());
     const newLeads = lines.slice(1).map(line => {
       const vals = line.match(/(".*?"|[^,]+)/g)?.map(v => v.replace(/^"|"$/g, '').trim()) || [];
-      const lead = { id: generateId(), createdAt: new Date().toISOString(), callCount: 0, callHistory: [], golfCourseId: settings.activeGolfCourse };
+      const lead = {};
       headers.forEach((h, i) => {
         const v = vals[i] || '';
         if (h.includes('business') || h.includes('company')) lead.businessName = v;
         else if (h.includes('contact') || h === 'name') lead.contactName = v;
         else if (h.includes('phone')) lead.phone = v;
         else if (h.includes('email')) lead.email = v;
+        else if (h.includes('website status')) lead.websiteStatus = v;
+        else if (h === 'status') lead.websiteStatus = v;
+        else if (h.includes('website') || h.includes('url')) lead.website = v;
+        else if (h.includes('address') || h.includes('street')) lead.address = v;
+        else if (h === 'city' || h.includes('city')) lead.city = v;
+        else if (h.includes('state') || h.includes('region')) lead.region = v;
+        else if (h.includes('industry') || h.includes('category')) lead.industry = v;
+        else if (h.includes('source')) lead.source = v;
+        else if (h.includes('follow')) lead.followUp = v;
+        else if (h.includes('priority')) lead.priority = v.toLowerCase();
+        else if (h.includes('market') || h.includes('list')) lead.golfCourseId = findGolfCourseIdByName(v);
         else if (h.includes('note')) lead.notes = v;
       });
-      return lead;
+      return buildImportedLead(lead);
     }).filter(l => l.businessName || l.phone);
-    if (newLeads.length) { setLeads(p => [...p, ...newLeads]); notify(` Imported ${newLeads.length} leads!`); closeModal('import'); setData(''); }
+    if (newLeads.length) {
+      setLeads(p => [...p, ...newLeads]);
+      setImportJobs(prev => [{
+        id: generateId(),
+        sourceType: 'csv',
+        label: 'Manual CSV import',
+        createdAt: new Date().toISOString(),
+        addedCount: newLeads.length,
+        skippedCount: 0,
+        golfCourseId: settings.activeGolfCourse || ''
+      }, ...prev].slice(0, 25));
+      notify(` Imported ${newLeads.length} leads!`);
+      closeModal('import');
+      setData('');
+    }
     else notify(' No valid leads');
+  };
+  const doGooglePlacesImport = async () => {
+    setIsImportingPlaces(true);
+    try {
+      const result = await importGooglePlacesLeads(placesForm);
+      if (result?.addedCount > 0) closeModal('import');
+    } catch (error) {
+      notify(` ${error.message || 'Google Places import failed'}`);
+    } finally {
+      setIsImportingPlaces(false);
+    }
+  };
+
+  const doFacebookImport = async () => {
+    setIsImportingFacebook(true);
+    try {
+      const result = await importFacebookLeads({
+        data: facebookData,
+        marketKey: facebookForm.marketKey,
+        industry: facebookForm.industry,
+        golfCourseId: facebookForm.golfCourseId
+      });
+      if (result?.addedCount > 0) {
+        setFacebookData('');
+      }
+    } catch (error) {
+      notify(` ${error.message || 'Facebook import failed'}`);
+    } finally {
+      setIsImportingFacebook(false);
+    }
+  };
+
+  const doEnrichment = async () => {
+    setIsEnriching(true);
+    try {
+      enrichExistingLeads(enrichmentForm);
+    } catch (error) {
+      notify(` ${error.message || 'Lead enrichment failed'}`);
+    } finally {
+      setIsEnriching(false);
+    }
   };
   return (
     <Modal onClose={() => closeModal('import')}>
       <ModalBox>
         <h2 style={{ color: colors.primary, marginBottom: 12, fontSize: 18 }}> Import Data</h2>
+        <div style={{ border: `1px solid ${colors.border}`, borderRadius: 12, padding: 16, marginBottom: 16, background: colors.bgCard }}>
+          <h3 style={{ color: colors.text, marginBottom: 12, fontSize: 15 }}>Google Places Import</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div>
+              <label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>Market</label>
+              <select value={placesForm.marketKey} onChange={e => setPlacesForm(f => ({ ...f, marketKey: e.target.value }))} style={inputBase}>
+                {MARKET_PRESETS.map(preset => <option key={preset.key} value={preset.key}>{preset.label}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>Industry</label>
+              <select value={placesForm.industry} onChange={e => setPlacesForm(f => ({ ...f, industry: e.target.value }))} style={inputBase}>
+                {INDUSTRIES.map(ind => <option key={ind} value={ind}>{ind}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>Max Results</label>
+              <select value={placesForm.maxResults} onChange={e => setPlacesForm(f => ({ ...f, maxResults: parseInt(e.target.value, 10) || 10 }))} style={inputBase}>
+                {[5, 10, 15, 20].map(count => <option key={count} value={count}>{count}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>Assign Market</label>
+              <select value={placesForm.golfCourseId} onChange={e => setPlacesForm(f => ({ ...f, golfCourseId: e.target.value }))} style={inputBase}>
+                <option value="">Auto / Active Market</option>
+                {golfCourses.map(gc => <option key={gc.id} value={gc.id}>{gc.name}</option>)}
+              </select>
+            </div>
+          </div>
+          <div style={{ marginTop: 10, color: colors.textDim, fontSize: 12 }}>
+            Uses the official Google Places API to search businesses and prefill CRM records with address, phone, website, rating, and market metadata.
+          </div>
+          <div style={{ display: 'flex', gap: 12, marginTop: 14 }}>
+            <button onClick={doGooglePlacesImport} disabled={isImportingPlaces} style={{ ...buttonBase, flex: 1, background: colors.success, color: '#fff' }}>
+              {isImportingPlaces ? 'Importing…' : 'Import from Google Places'}
+            </button>
+          </div>
+        </div>
+        <div style={{ border: `1px solid ${colors.border}`, borderRadius: 12, padding: 16, marginBottom: 16, background: colors.bgCard }}>
+          <h3 style={{ color: colors.text, marginBottom: 12, fontSize: 15 }}>Facebook Lead Intake</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+            <div>
+              <label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>Market</label>
+              <select value={facebookForm.marketKey} onChange={e => setFacebookForm(f => ({ ...f, marketKey: e.target.value }))} style={inputBase}>
+                {MARKET_PRESETS.map(preset => <option key={preset.key} value={preset.key}>{preset.label}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>Industry</label>
+              <select value={facebookForm.industry} onChange={e => setFacebookForm(f => ({ ...f, industry: e.target.value }))} style={inputBase}>
+                {INDUSTRIES.map(ind => <option key={ind} value={ind}>{ind}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>Assign Market</label>
+              <select value={facebookForm.golfCourseId} onChange={e => setFacebookForm(f => ({ ...f, golfCourseId: e.target.value }))} style={inputBase}>
+                <option value="">Auto / Active Market</option>
+                {golfCourses.map(gc => <option key={gc.id} value={gc.id}>{gc.name}</option>)}
+              </select>
+            </div>
+          </div>
+          <div style={{ marginTop: 10, color: colors.textDim, fontSize: 12 }}>
+            Paste one lead per line as `Business Name | Facebook URL | Phone | Email | Website | City | Region`, or paste one JSON object per line.
+          </div>
+          <textarea value={facebookData} onChange={e => setFacebookData(e.target.value)} placeholder="Wildflower Hair Studio | https://facebook.com/example | (253) 555-1212 | hello@example.com | https://example.com | Renton | WA" style={{ ...inputBase, marginTop: 10, height: 110, resize: 'vertical' }} />
+          <div style={{ display: 'flex', gap: 12, marginTop: 14 }}>
+            <button onClick={doFacebookImport} disabled={isImportingFacebook} style={{ ...buttonBase, flex: 1, background: colors.accent, color: '#fff' }}>
+              {isImportingFacebook ? 'Importing...' : 'Import Facebook Leads'}
+            </button>
+          </div>
+        </div>
+        <div style={{ border: `1px solid ${colors.border}`, borderRadius: 12, padding: 16, marginBottom: 16, background: colors.bgCard }}>
+          <h3 style={{ color: colors.text, marginBottom: 12, fontSize: 15 }}>Bulk Lead Enrichment</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+            <div>
+              <label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>Target</label>
+              <select value={enrichmentForm.target} onChange={e => setEnrichmentForm(f => ({ ...f, target: e.target.value }))} style={inputBase}>
+                <option value="missingWebsiteStatus">Missing website status</option>
+                <option value="missingLocation">Missing city or region</option>
+                <option value="facebookOnly">Facebook-linked leads</option>
+                <option value="all">All leads</option>
+              </select>
+            </div>
+            <div>
+              <label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>Scope</label>
+              <select value={enrichmentForm.golfCourseId} onChange={e => setEnrichmentForm(f => ({ ...f, golfCourseId: e.target.value }))} style={inputBase}>
+                <option value="all">All Markets</option>
+                {golfCourses.map(gc => <option key={gc.id} value={gc.id}>{gc.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>Fallback Market</label>
+              <select value={enrichmentForm.marketKey} onChange={e => setEnrichmentForm(f => ({ ...f, marketKey: e.target.value }))} style={inputBase}>
+                {MARKET_PRESETS.map(preset => <option key={preset.key} value={preset.key}>{preset.label}</option>)}
+              </select>
+            </div>
+          </div>
+          <div style={{ marginTop: 10, color: colors.textDim, fontSize: 12 }}>
+            Recalculates website status, priority, and outreach angle, and can backfill missing city or region from a selected market preset.
+          </div>
+          <div style={{ display: 'flex', gap: 12, marginTop: 14 }}>
+            <button onClick={doEnrichment} disabled={isEnriching} style={{ ...buttonBase, flex: 1, background: colors.warning, color: '#000' }}>
+              {isEnriching ? 'Enriching...' : 'Run Enrichment'}
+            </button>
+          </div>
+        </div>
+        <div style={{ color: colors.textDim, fontSize: 12, marginBottom: 8 }}>Or paste CSV / JSON manually</div>
         <textarea value={data} onChange={e => setData(e.target.value)} placeholder="Paste CSV or JSON..." style={{ ...inputBase, height: 180, resize: 'vertical' }} />
         <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
           <button onClick={doImport} style={{ ...buttonBase, flex: 1, background: colors.primary, color: '#fff' }}>Import</button>
           <button onClick={() => closeModal('import')} style={{ ...buttonBase, background: colors.bgCard, color: colors.text }}>Cancel</button>
         </div>
+        {importJobs?.length > 0 && (
+          <div style={{ marginTop: 18, borderTop: `1px solid ${colors.border}`, paddingTop: 14 }}>
+            <div style={{ color: colors.textDim, fontSize: 11, marginBottom: 8, textTransform: 'uppercase' }}>Recent Imports</div>
+            <div style={{ display: 'grid', gap: 8, maxHeight: 180, overflowY: 'auto' }}>
+              {importJobs.slice(0, 5).map(job => (
+                <div key={job.id} style={{ background: colors.bgCard, border: `1px solid ${colors.border}`, borderRadius: 10, padding: 10 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+                    <div>
+                      <div style={{ color: colors.text, fontSize: 13, fontWeight: '600' }}>{job.label || job.sourceType}</div>
+                      <div style={{ color: colors.textMuted, fontSize: 11 }}>{formatDateTime(job.createdAt)}</div>
+                    </div>
+                    <div style={{ textAlign: 'right', fontSize: 11 }}>
+                      <div style={{ color: colors.success }}>{job.addedCount || 0} added</div>
+                      {!!job.skippedCount && <div style={{ color: colors.warning }}>{job.skippedCount} skipped</div>}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </ModalBox>
     </Modal>
   );
@@ -186,7 +439,27 @@ export function ExportModal() {
       notify('📦 Backup exported!'); closeModal('export'); return;
     }
     const exports = {
-      leads: { h: ['Business', 'Contact', 'Phone', 'Email', 'Industry'], d: leads.map(l => [l.businessName, l.contactName, l.phone, l.email, l.industry]), f: 'leads.csv' },
+      leads: {
+        h: ['Business', 'Contact', 'Phone', 'Email', 'Website', 'Website Status', 'Address', 'City', 'Region', 'Industry', 'Source', 'Priority', 'Priority Score', 'Market', 'Notes'],
+        d: leads.map(l => [
+          l.businessName,
+          l.contactName,
+          l.phone,
+          l.email,
+          l.website,
+          l.websiteStatus,
+          l.address,
+          l.city,
+          l.region,
+          l.industry,
+          l.source,
+          l.priority,
+          l.priorityScore,
+          golfCourses.find(gc => gc.id === l.golfCourseId)?.name || '',
+          l.notes
+        ]),
+        f: 'leads.csv'
+      },
       sales: { h: ['Lead', 'Date', 'Type', 'Amount'], d: sales.map(s => [s.leadName, formatDate(s.saleDate), s.saleType, s.amount]), f: 'sales.csv' },
     };
     const exp = exports[type]; if (!exp) return;
@@ -268,10 +541,11 @@ export function RecordSaleModal() {
 }
 
 export function LeadDetailModal() {
-  const { modals, closeModal, openModal, updateLead, moveToDNC, moveToDead, convertLead, deleteToTrash, tallyCall, quickLogEmail, deleteCall } = useCRM();
+  const { modals, closeModal, openModal, updateLead, moveToDNC, moveToDead, convertLead, deleteToTrash, tallyCall, quickLogEmail, deleteCall, audits, generateLeadAudit, updateOutreachStatus } = useCRM();
   const [showConvert, setShowConvert] = useState(false);
   const [saleForm, setSaleForm] = useState({ type: 'single', amount: 395, saleCount: 1, notes: '' });
   const lead = modals.leadDetail;
+  const latestAudit = (audits || []).find(audit => audit.leadId === lead?.id);
   if (!lead) return null;
 
   const handleTypeChange = (type) => {
@@ -340,13 +614,44 @@ export function LeadDetailModal() {
         </div>
         
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
-          {[['Phone', lead.phone], ['Email', lead.email], ['Website', lead.website], ['Source', lead.source]].map(([label, val]) => (
+          {[
+            ['Phone', lead.phone],
+            ['Email', lead.email],
+            ['Website', lead.website],
+            ['Location', [lead.city, lead.region].filter(Boolean).join(', ') || lead.address],
+            ['Website Status', WEBSITE_STATUS_OPTIONS.find(option => option.value === lead.websiteStatus)?.label || lead.websiteStatus],
+            ['Source', lead.source]
+          ].map(([label, val]) => (
             <div key={label} style={{ background: colors.bgCard, padding: 14, borderRadius: 10 }}>
               <div style={{ color: colors.textDim, fontSize: 11, textTransform: 'uppercase', marginBottom: 4 }}>{label}</div>
               <div style={{ fontSize: 14 }}>{val || '—'}</div>
             </div>
           ))}
         </div>
+
+        {(lead.googlePlaceId || lead.googleMapsUri || typeof lead.googleRating === 'number') && (
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ color: colors.textDim, fontSize: 11, marginBottom: 8, textTransform: 'uppercase' }}>Google Import</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+              <div style={{ background: colors.bgCard, padding: 14, borderRadius: 10 }}>
+                <div style={{ color: colors.textDim, fontSize: 11, textTransform: 'uppercase', marginBottom: 4 }}>Rating</div>
+                <div style={{ fontSize: 14 }}>
+                  {typeof lead.googleRating === 'number' ? `${lead.googleRating.toFixed(1)}${lead.googleReviewCount ? ` (${lead.googleReviewCount} reviews)` : ''}` : '—'}
+                </div>
+              </div>
+              <div style={{ background: colors.bgCard, padding: 14, borderRadius: 10 }}>
+                <div style={{ color: colors.textDim, fontSize: 11, textTransform: 'uppercase', marginBottom: 4 }}>Business Status</div>
+                <div style={{ fontSize: 14 }}>{lead.googleBusinessStatus || '—'}</div>
+              </div>
+              <div style={{ background: colors.bgCard, padding: 14, borderRadius: 10 }}>
+                <div style={{ color: colors.textDim, fontSize: 11, textTransform: 'uppercase', marginBottom: 4 }}>Maps Link</div>
+                <div style={{ fontSize: 14, wordBreak: 'break-word' }}>
+                  {lead.googleMapsUri ? <a href={lead.googleMapsUri} target="_blank" rel="noreferrer" style={{ color: colors.primary }}>Open Maps</a> : '—'}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 20 }}>
           <div style={{ background: colors.bgCard, padding: 16, borderRadius: 10, textAlign: 'center' }}>
@@ -384,6 +689,52 @@ export function LeadDetailModal() {
           </div>
         )}
 
+        {lead.outreachAngle && (
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ color: colors.textDim, fontSize: 11, marginBottom: 8, textTransform: 'uppercase' }}>Outreach Angle</div>
+            <div style={{ background: colors.bgCard, padding: 14, borderRadius: 10, fontSize: 13 }}>{lead.outreachAngle}</div>
+          </div>
+        )}
+
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ color: colors.textDim, fontSize: 11, marginBottom: 8, textTransform: 'uppercase' }}>Outreach Status</div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {OUTREACH_STATUS_OPTIONS.map(option => (
+              <button
+                key={option.value}
+                onClick={() => updateOutreachStatus(lead.id, option.value)}
+                style={{
+                  ...buttonBase,
+                  padding: '8px 12px',
+                  background: lead.outreachStatus === option.value ? colors.primary : colors.bgCard,
+                  color: lead.outreachStatus === option.value ? '#fff' : colors.text,
+                  border: `1px solid ${lead.outreachStatus === option.value ? colors.primary : colors.border}`,
+                  fontSize: 12
+                }}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {latestAudit && (
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <div style={{ color: colors.textDim, fontSize: 11, textTransform: 'uppercase' }}>Latest Audit</div>
+              <div style={{ color: colors.textDim, fontSize: 11 }}>{formatDateTime(latestAudit.createdAt)}</div>
+            </div>
+            <div style={{ background: colors.bgCard, padding: 14, borderRadius: 10, fontSize: 13, marginBottom: 8 }}>{latestAudit.summary}</div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {(latestAudit.talkingPoints || []).map((point, index) => (
+                <span key={`${latestAudit.id}-${index}`} style={{ display: 'inline-flex', alignItems: 'center', padding: '4px 10px', borderRadius: 999, fontSize: 12, background: colors.bg, border: `1px solid ${colors.border}`, color: colors.textDim }}>
+                  {point}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
         {lead.callHistory?.length > 0 && (
           <div style={{ marginBottom: 20 }}>
             <div style={{ color: colors.textDim, fontSize: 11, marginBottom: 8, textTransform: 'uppercase' }}>Call History ({lead.callHistory.length})</div>
@@ -399,6 +750,7 @@ export function LeadDetailModal() {
         )}
 
         <div style={{ display: 'flex', gap: 10, paddingTop: 16, borderTop: `1px solid ${colors.border}`, flexWrap: 'wrap' }}>
+          <button onClick={() => generateLeadAudit(lead)} style={{ ...buttonBase, background: colors.accent, color: '#fff' }}>Audit</button>
           <button onClick={() => { moveToDNC(lead); closeModal('leadDetail'); }} style={{ ...buttonBase, background: colors.warning, color: '#000' }}>🚫 DNC</button>
           <button onClick={() => { moveToDead(lead); closeModal('leadDetail'); }} style={{ ...buttonBase, background: colors.danger, color: '#fff' }}>💀 Dead</button>
           <button onClick={() => setShowConvert(true)} style={{ ...buttonBase, background: colors.success, color: '#fff', fontWeight: '600' }}>🎉 Convert + Sale</button>
@@ -430,7 +782,16 @@ export function EditLeadModal() {
           <button onClick={onClose} style={{ ...buttonBase, background: colors.bgCard, color: colors.textMuted }}><IconX size={16} /></button>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-          {[['businessName', 'Business Name', 2], ['contactName', 'Contact', 1], ['phone', 'Phone', 1], ['email', 'Email', 1], ['website', 'Website', 1], ['address', 'Address', 2]].map(([key, label, span]) => (
+          {[
+            ['businessName', 'Business Name', 2],
+            ['contactName', 'Contact', 1],
+            ['phone', 'Phone', 1],
+            ['email', 'Email', 1],
+            ['website', 'Website', 1],
+            ['address', 'Address', 2],
+            ['city', 'City', 1],
+            ['region', 'State / Region', 1]
+          ].map(([key, label, span]) => (
             <div key={key} style={{ gridColumn: `span ${span}` }}>
               <label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>{label}</label>
               <input value={form[key] || ''} onChange={e => setForm(p => ({ ...p, [key]: e.target.value }))} style={inputBase} />
@@ -450,6 +811,21 @@ export function EditLeadModal() {
             <select value={form.golfCourseId || ''} onChange={e => setForm(p => ({ ...p, golfCourseId: e.target.value || null }))} style={inputBase}>
               <option value="">None</option>
               {golfCourses.map(gc => <option key={gc.id} value={gc.id}>{gc.name}</option>)}
+            </select>
+          </div>
+
+          <div style={{ gridColumn: 'span 1' }}>
+            <label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>Source</label>
+            <select value={form.source || ''} onChange={e => setForm(p => ({ ...p, source: e.target.value }))} style={inputBase}>
+              <option value="">Select...</option>
+              {SOURCES.map(source => <option key={source} value={source}>{source}</option>)}
+            </select>
+          </div>
+
+          <div style={{ gridColumn: 'span 1' }}>
+            <label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>Website Status</label>
+            <select value={form.websiteStatus || 'unknown'} onChange={e => setForm(p => ({ ...p, websiteStatus: e.target.value }))} style={inputBase}>
+              {WEBSITE_STATUS_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
             </select>
           </div>
 
@@ -694,7 +1070,7 @@ export function TermsModal() {
 export function AllModals() {
   return (
     <>
-      <HelpModal />
+      <EnhancedHelpModal />
       <SettingsModal />
       <ImportModal />
       <ExportModal />

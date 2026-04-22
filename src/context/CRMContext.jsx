@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
-import { STORAGE_KEYS, loadData, saveData, generateId, isTodayOrPast, isOverdue, DEFAULT_SETTINGS, SORT_OPTIONS } from '../utils/helpers';
+import { STORAGE_KEYS, loadData, saveData, generateId, isTodayOrPast, isOverdue, DEFAULT_SETTINGS, SORT_OPTIONS, MARKET_PRESETS, normalizeGooglePlaceLead, normalizeFacebookLead, scoreLead, classifyPriorityFromScore, normalizeWebsiteStatus, generateOutreachAngle, generateWebsiteAudit, generateAuditSummary, generateAuditTalkingPoints, generateEmailDraft } from '../utils/helpers';
 
 const CRMContext = createContext(null);
 
@@ -16,6 +16,8 @@ export function CRMProvider({ children }) {
   const [golfCourses, setGolfCourses] = useState(() => loadData(STORAGE_KEYS.golfCourses, []));
   const [sales, setSales] = useState(() => loadData(STORAGE_KEYS.sales, []));
   const [settings, setSettings] = useState(() => loadData(STORAGE_KEYS.settings, DEFAULT_SETTINGS));
+  const [importJobs, setImportJobs] = useState(() => loadData(STORAGE_KEYS.importJobs, []));
+  const [audits, setAudits] = useState(() => loadData(STORAGE_KEYS.audits, []));
 
   // UI state
   const [view, setView] = useState('dashboard');
@@ -24,7 +26,7 @@ export function CRMProvider({ children }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [analyticsRange, setAnalyticsRange] = useState('week');
   const [sortBy, setSortBy] = useState('newest');
-  const [filters, setFilters] = useState(() => loadData(STORAGE_KEYS.filters, { golfCourseId: 'all', industry: 'all', priority: 'all', source: 'all', outcome: 'all', saleType: 'all' }));
+  const [filters, setFilters] = useState(() => loadData(STORAGE_KEYS.filters, { golfCourseId: 'all', industry: 'all', priority: 'all', source: 'all', websiteStatus: 'all', outcome: 'all', saleType: 'all' }));
   const [session, setSession] = useState(() => loadData(STORAGE_KEYS.session, { active: false, view: 'leads', leadId: null }));
 
   // Modal state
@@ -49,6 +51,8 @@ export function CRMProvider({ children }) {
   useEffect(() => { saveData(STORAGE_KEYS.golfCourses, golfCourses); }, [golfCourses]);
   useEffect(() => { saveData(STORAGE_KEYS.sales, sales); }, [sales]);
   useEffect(() => { saveData(STORAGE_KEYS.settings, settings); }, [settings]);
+  useEffect(() => { saveData(STORAGE_KEYS.importJobs, importJobs); }, [importJobs]);
+  useEffect(() => { saveData(STORAGE_KEYS.audits, audits); }, [audits]);
   useEffect(() => { saveData(STORAGE_KEYS.filters, filters); }, [filters]);
 
   // Computed values
@@ -59,6 +63,8 @@ export function CRMProvider({ children }) {
   const activeGolfCourse = useMemo(() => golfCourses.find(gc => gc.id === settings.activeGolfCourse) || null, [golfCourses, settings.activeGolfCourse]);
   const followUps = useMemo(() => leads.filter(l => l.followUp && isTodayOrPast(l.followUp)).sort((a, b) => new Date(a.followUp) - new Date(b.followUp)), [leads]);
   const overdueCount = useMemo(() => leads.filter(l => l.followUp && isOverdue(l.followUp)).length, [leads]);
+  const outreachReadyCount = useMemo(() => leads.filter(l => ['hot', 'normal'].includes(l.priority) && !!(l.phone || l.email)).length, [leads]);
+  const recentAudits = useMemo(() => audits.slice(0, 5), [audits]);
 
   // Today's sales stats
   const todaysSales = useMemo(() => {
@@ -88,6 +94,21 @@ export function CRMProvider({ children }) {
 
   // Notification
   const notify = useCallback((msg) => { setNotification(msg); setTimeout(() => setNotification(''), 2500); }, []);
+
+  const enrichLead = useCallback((lead = {}) => {
+    const normalizedLead = {
+      ...lead,
+      websiteStatus: normalizeWebsiteStatus(lead.websiteStatus || (lead.website ? 'outdated' : (lead.facebookUrl ? 'facebookOnly' : 'unknown'))),
+    };
+    const priorityScore = scoreLead(normalizedLead);
+    return {
+      ...normalizedLead,
+      priorityScore,
+      priority: classifyPriorityFromScore(priorityScore),
+      outreachAngle: lead.outreachAngle || generateOutreachAngle(normalizedLead),
+      outreachStatus: lead.outreachStatus || 'new',
+    };
+  }, []);
 
 
   // Quota & revenue goals (monthly)
@@ -142,7 +163,7 @@ export function CRMProvider({ children }) {
   }, [settings?.quotaMonth, settings?.monthlyQuota, settings?.dailyRevenueGoal, settings?.weeklyRevenueGoal, sales]);
   // Filters
   const updateFilters = useCallback((patch) => setFilters(prev => ({ ...prev, ...patch })), []);
-  const clearFilters = useCallback(() => setFilters({ golfCourseId: 'all', industry: 'all', priority: 'all', source: 'all', outcome: 'all', saleType: 'all' }), []);
+  const clearFilters = useCallback(() => setFilters({ golfCourseId: 'all', industry: 'all', priority: 'all', source: 'all', websiteStatus: 'all', outcome: 'all', saleType: 'all' }), []);
 
   // Tally call
   const tallyCall = useCallback((lead = null, outcome = 'completed', notes = '') => {
@@ -168,7 +189,11 @@ export function CRMProvider({ children }) {
         item.leadName,
         item.phone,
         item.email,
-        item.website
+        item.website,
+        item.address,
+        item.city,
+        item.region,
+        item.importedFromMarket
       ].filter(Boolean).join(' ').toLowerCase();
       return hay.includes(q);
     };
@@ -190,6 +215,9 @@ export function CRMProvider({ children }) {
       }
       if (filters?.source && filters.source !== 'all') {
         if ((item.source || '') !== filters.source) return false;
+      }
+      if (filters?.websiteStatus && filters.websiteStatus !== 'all') {
+        if ((item.websiteStatus || 'unknown') !== filters.websiteStatus) return false;
       }
 
       // Call log filters
@@ -262,6 +290,10 @@ export function CRMProvider({ children }) {
       case 'calllog': return applyPlainPipeline(callLog.slice(0, 1000), callSorter).slice(0, 100);
       case 'sales': return applyPlainPipeline(sales, salesSorter);
       case 'trash': return applyPlainPipeline(trash, trashSorter);
+      case 'outreach':
+        return applyLeadPipeline(
+          leads.filter(item => ['hot', 'normal'].includes(item.priority) && !!(item.phone || item.email || item.facebookUrl))
+        );
       case 'emails':
         return emails.filter(matchesSearch);
       case 'golfcourses':
@@ -307,26 +339,263 @@ export function CRMProvider({ children }) {
   // Quick email log (just mark that we emailed them)
   const quickLogEmail = useCallback((lead) => {
     const now = new Date().toISOString();
+    const draft = generateEmailDraft(lead);
     setEmails(prev => [{ 
       id: generateId(), 
       leadId: lead.id, 
       leadName: lead.businessName,
       to: lead.email || '',
+      subject: draft.subject,
+      body: draft.body,
       sentAt: now
     }, ...prev]);
-    setLeads(prev => prev.map(l => l.id === lead.id ? { ...l, lastEmailed: now, emailCount: (l.emailCount || 0) + 1 } : l));
+    setLeads(prev => prev.map(l => l.id === lead.id ? { ...l, lastEmailed: now, emailCount: (l.emailCount || 0) + 1, outreachStatus: 'contacted' } : l));
     notify(` Email logged for ${lead.businessName}`);
+  }, [notify]);
+
+  const generateLeadAudit = useCallback((lead) => {
+    const now = new Date().toISOString();
+    const auditMatrix = generateWebsiteAudit(lead);
+    const audit = {
+      id: generateId(),
+      leadId: lead.id,
+      leadName: lead.businessName || '',
+      websiteUrl: lead.website || '',
+      websiteStatus: lead.websiteStatus || 'unknown',
+      summary: generateAuditSummary(lead),
+      talkingPoints: generateAuditTalkingPoints(lead),
+      createdAt: now,
+      ...auditMatrix,
+    };
+
+    setAudits(prev => [audit, ...prev].slice(0, 200));
+    setLeads(prev => prev.map(l => l.id === lead.id ? { ...l, lastAuditAt: now, latestAuditSummary: audit.summary, outreachStatus: l.outreachStatus === 'new' ? 'audit_ready' : l.outreachStatus } : l));
+    notify(`Audit generated for ${lead.businessName}`);
+    return audit;
+  }, [notify]);
+
+  const updateOutreachStatus = useCallback((leadId, outreachStatus) => {
+    setLeads(prev => prev.map(lead => lead.id === leadId ? { ...lead, outreachStatus } : lead));
+    notify('Outreach status updated');
   }, [notify]);
 
   // Lead actions
   const addLead = useCallback((data) => {
     if (!data.businessName && !data.phone) { notify('Name or phone required'); return false; }
-    setLeads(prev => [{ id: generateId(), ...data, createdAt: new Date().toISOString(), callCount: 0, callHistory: [], golfCourseId: data.golfCourseId || settings.activeGolfCourse }, ...prev]);
+    setLeads(prev => [{
+      id: generateId(),
+      ...enrichLead(data),
+      createdAt: new Date().toISOString(),
+      callCount: 0,
+      callHistory: [],
+      golfCourseId: data.golfCourseId || settings.activeGolfCourse
+    }, ...prev]);
     notify(`${data.businessName || 'Lead'} added`);
     return true;
-  }, [notify, settings.activeGolfCourse]);
+  }, [enrichLead, notify, settings.activeGolfCourse]);
 
-  const updateLead = useCallback((lead) => { setLeads(prev => prev.map(l => l.id === lead.id ? lead : l)); openModal('leadDetail', lead); closeModal('editLead'); notify('Lead updated'); }, [notify]);
+  const importGooglePlacesLeads = useCallback(async ({ marketKey, industry, maxResults = 10, golfCourseId = '' }) => {
+    const market = MARKET_PRESETS.find(item => item.key === marketKey);
+    if (!market) throw new Error('Choose a valid market.');
+
+    const query = `${industry} in ${market.queryLabel}`;
+    const response = await fetch('/api/google-places-search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query, maxResults }),
+    });
+
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(payload?.error || 'Unable to import leads from Google Places.');
+    }
+
+    const mappedLeads = (payload?.leads || []).map((place) => {
+      const matchedMarketId =
+        golfCourseId ||
+        golfCourses.find(gc => (gc.name || '').toLowerCase() === (market.marketMatch || market.city).toLowerCase())?.id ||
+        settings.activeGolfCourse ||
+        '';
+
+      return normalizeGooglePlaceLead(place, {
+        marketKey,
+        marketLabel: market.label,
+        city: market.city,
+        region: market.region,
+        industry,
+        query,
+        golfCourseId: matchedMarketId,
+      });
+    });
+
+    let addedCount = 0;
+    let skippedCount = 0;
+
+    setLeads(prev => {
+      const existingByPlace = new Set(prev.map(lead => lead.googlePlaceId).filter(Boolean));
+      const existingFallback = new Set(
+        prev.map(lead => `${(lead.businessName || '').trim().toLowerCase()}|${(lead.phone || '').replace(/\D/g, '')}`)
+      );
+
+      const next = [...prev];
+      for (const lead of mappedLeads) {
+        const fallbackKey = `${(lead.businessName || '').trim().toLowerCase()}|${(lead.phone || '').replace(/\D/g, '')}`;
+        if ((lead.googlePlaceId && existingByPlace.has(lead.googlePlaceId)) || existingFallback.has(fallbackKey)) {
+          skippedCount += 1;
+          continue;
+        }
+
+        next.unshift({
+          ...lead,
+          createdAt: new Date().toISOString(),
+          callCount: 0,
+          callHistory: [],
+          golfCourseId: lead.golfCourseId || golfCourseId || settings.activeGolfCourse || '',
+        });
+        if (lead.googlePlaceId) existingByPlace.add(lead.googlePlaceId);
+        existingFallback.add(fallbackKey);
+        addedCount += 1;
+      }
+
+      return next;
+    });
+
+    notify(`Imported ${addedCount} lead${addedCount === 1 ? '' : 's'} from ${market.label}${skippedCount ? ` • skipped ${skippedCount} duplicates` : ''}`);
+    setImportJobs(prev => [{
+      id: generateId(),
+      sourceType: 'google_places',
+      label: `${industry} in ${market.label}`,
+      createdAt: new Date().toISOString(),
+      addedCount,
+      skippedCount,
+      marketLabel: market.label,
+      golfCourseId: golfCourseId || settings.activeGolfCourse || '',
+    }, ...prev].slice(0, 25));
+    return { addedCount, skippedCount, query };
+  }, [golfCourses, notify, settings.activeGolfCourse]);
+
+  const importFacebookLeads = useCallback(({ data, marketKey, industry, golfCourseId = '' }) => {
+    const market = MARKET_PRESETS.find(item => item.key === marketKey);
+    if (!market) throw new Error('Choose a valid market.');
+
+    const lines = String(data || '').split('\n').map(line => line.trim()).filter(Boolean);
+    if (!lines.length) throw new Error('Paste at least one Facebook lead row.');
+
+    const parsed = lines.map((line) => {
+      if (line.startsWith('{')) {
+        try {
+          return JSON.parse(line);
+        } catch {
+          return null;
+        }
+      }
+
+      const parts = line.split('|').map(part => part.trim());
+      if (parts.length === 1) {
+        return { businessName: parts[0], facebookUrl: '' };
+      }
+
+      const [businessName, facebookUrl, phone = '', email = '', website = '', city = '', region = ''] = parts;
+      return { businessName, facebookUrl, phone, email, website, city, region };
+    }).filter(Boolean);
+
+    let addedCount = 0;
+    let skippedCount = 0;
+
+    setLeads(prev => {
+      const existing = new Set(
+        prev.map(lead => `${(lead.businessName || '').trim().toLowerCase()}|${(lead.facebookUrl || '').trim().toLowerCase()}`)
+      );
+      const next = [...prev];
+
+      for (const row of parsed) {
+        const normalized = enrichLead(normalizeFacebookLead(row, {
+          marketKey,
+          marketLabel: market.label,
+          city: row.city || market.city,
+          region: row.region || market.region,
+          industry,
+          golfCourseId: golfCourseId || settings.activeGolfCourse || '',
+        }));
+
+        const key = `${(normalized.businessName || '').trim().toLowerCase()}|${(normalized.facebookUrl || '').trim().toLowerCase()}`;
+        if (existing.has(key)) {
+          skippedCount += 1;
+          continue;
+        }
+
+        existing.add(key);
+        next.unshift({
+          ...normalized,
+          createdAt: new Date().toISOString(),
+          callCount: 0,
+          callHistory: [],
+        });
+        addedCount += 1;
+      }
+
+      return next;
+    });
+
+    setImportJobs(prev => [{
+      id: generateId(),
+      sourceType: 'facebook',
+      label: `${industry} in ${market.label}`,
+      createdAt: new Date().toISOString(),
+      addedCount,
+      skippedCount,
+      marketLabel: market.label,
+      golfCourseId: golfCourseId || settings.activeGolfCourse || '',
+    }, ...prev].slice(0, 25));
+
+    notify(`Imported ${addedCount} Facebook lead${addedCount === 1 ? '' : 's'}${skippedCount ? ` • skipped ${skippedCount} duplicates` : ''}`);
+    return { addedCount, skippedCount };
+  }, [enrichLead, notify, settings.activeGolfCourse]);
+
+  const enrichExistingLeads = useCallback(({ target = 'all', golfCourseId = 'all', marketKey = '' } = {}) => {
+    const market = MARKET_PRESETS.find(item => item.key === marketKey);
+    let updatedCount = 0;
+
+    setLeads(prev => prev.map((lead) => {
+      const matchesTarget = target === 'all'
+        || (target === 'missingWebsiteStatus' && (!lead.websiteStatus || lead.websiteStatus === 'unknown'))
+        || (target === 'missingLocation' && (!lead.city || !lead.region))
+        || (target === 'facebookOnly' && !!lead.facebookUrl);
+
+      const matchesMarket = golfCourseId === 'all' || lead.golfCourseId === golfCourseId;
+      if (!matchesTarget || !matchesMarket) return lead;
+
+      const nextLead = enrichLead({
+        ...lead,
+        city: lead.city || market?.city || lead.city,
+        region: lead.region || market?.region || lead.region,
+      });
+      updatedCount += 1;
+      return nextLead;
+    }));
+
+    setImportJobs(prev => [{
+      id: generateId(),
+      sourceType: 'enrichment',
+      label: `Bulk enrichment${market?.label ? ` • ${market.label}` : ''}`,
+      createdAt: new Date().toISOString(),
+      addedCount: updatedCount,
+      skippedCount: 0,
+      marketLabel: market?.label || '',
+      golfCourseId: golfCourseId === 'all' ? '' : golfCourseId,
+    }, ...prev].slice(0, 25));
+
+    notify(`Enriched ${updatedCount} lead${updatedCount === 1 ? '' : 's'}`);
+    return { updatedCount };
+  }, [enrichLead, notify]);
+
+  const updateLead = useCallback((lead) => {
+    const nextLead = enrichLead(lead);
+    setLeads(prev => prev.map(l => l.id === lead.id ? nextLead : l));
+    openModal('leadDetail', nextLead);
+    closeModal('editLead');
+    notify('Lead updated');
+  }, [enrichLead, notify]);
   const moveToDNC = useCallback((lead) => { setLeads(prev => prev.filter(l => l.id !== lead.id)); setDncList(prev => [...prev, { ...lead, dncDate: new Date().toISOString() }]); notify(` ${lead.businessName} → DNC`); }, [notify]);
   const moveToDead = useCallback((lead) => { setLeads(prev => prev.filter(l => l.id !== lead.id)); setDeadLeads(prev => [...prev, { ...lead, deadDate: new Date().toISOString() }]); notify(` ${lead.businessName} → Dead`); }, [notify]);
   const restoreFromDNC = useCallback((lead) => { setDncList(prev => prev.filter(l => l.id !== lead.id)); setLeads(prev => [...prev, { ...lead, restoredAt: new Date().toISOString() }]); notify(` ${lead.businessName} restored`); }, [notify]);
@@ -468,6 +737,8 @@ export function CRMProvider({ children }) {
     const filteredSales = sales.filter(s => new Date(s.saleDate) >= startDate);
     const totalRevenue = filteredSales.reduce((sum, s) => sum + (s.amount || 0), 0);
     const totalSaleCount = filteredSales.reduce((sum, s) => sum + (s.saleCount || 1), 0);
+    const filteredEmails = emails.filter(e => new Date(e.sentAt) >= startDate);
+    const filteredAudits = audits.filter(a => new Date(a.createdAt) >= startDate);
     
     return {
       totalCalls: filtered.length,
@@ -479,19 +750,23 @@ export function CRMProvider({ children }) {
       totalRevenue,
       totalSaleCount,
       salesCount: filteredSales.length,
-      conversionRate: filtered.length > 0 ? ((totalSaleCount / filtered.length) * 100).toFixed(1) : 0
+      conversionRate: filtered.length > 0 ? ((totalSaleCount / filtered.length) * 100).toFixed(1) : 0,
+      emailsSent: filteredEmails.length,
+      auditsGenerated: filteredAudits.length
     };
-  }, [callLog, dailyStats, analyticsRange, sales]);
+  }, [callLog, dailyStats, analyticsRange, sales, emails, audits]);
 
-  const clearAllData = useCallback(() => { if (confirm('Clear ALL data?')) { setLeads([]); setDncList([]); setDeadLeads([]); setConvertedLeads([]); setTrash([]); setEmails([]); setCallLog([]); setDailyStats({}); setSales([]); notify('Data cleared'); } }, [notify]);
+  const clearAllData = useCallback(() => { if (confirm('Clear ALL data?')) { setLeads([]); setDncList([]); setDeadLeads([]); setConvertedLeads([]); setTrash([]); setEmails([]); setCallLog([]); setDailyStats({}); setSales([]); setAudits([]); notify('Data cleared'); } }, [notify]);
 
   return (
     <CRMContext.Provider value={{
-      leads, dncList, deadLeads, convertedLeads, trash, emails, callLog, dailyStats, golfCourses, sales, settings, setSettings,
+      leads, dncList, deadLeads, convertedLeads, trash, emails, callLog, dailyStats, golfCourses, sales, settings, setSettings, audits,
       view, setView, selectedIndex, setSelectedIndex, notification, searchQuery, setSearchQuery, analyticsRange, setAnalyticsRange, sortBy, setSortBy, filters, updateFilters, clearFilters, session, startSession, stopSession, sessionNext,
       modals, openModal, closeModal, closeAllModals,
-      todaysCalls, progress, hotLeads, activeGolfCourse, followUps, overdueCount, analytics, todaysSales, weekSales, quotaStats,
+      todaysCalls, progress, hotLeads, activeGolfCourse, followUps, overdueCount, analytics, todaysSales, weekSales, quotaStats, outreachReadyCount, recentAudits,
+      importJobs, setImportJobs,
       notify, tallyCall, quickLogEmail, addLead, updateLead, moveToDNC, moveToDead, restoreFromDNC, restoreFromDead, 
+      importGooglePlacesLeads, importFacebookLeads, enrichExistingLeads, generateLeadAudit, updateOutreachStatus,
       convertLead, unconvertLead, deleteToTrash, restoreFromTrash, emptyTrash,
       deleteCall, updateCall, addGolfCourse, updateGolfCourse, deleteGolfCourse, recordSale, updateSale, deleteSale, getCurrentList, clearAllData,
       setLeads, setDncList, setDeadLeads, setConvertedLeads, setCallLog, setGolfCourses, setEmails, setSales

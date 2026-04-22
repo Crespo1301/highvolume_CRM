@@ -55,6 +55,12 @@ select {
   line-height: 1.05;
 }
 
+.landing-brand {
+  display: inline-flex;
+  flex-direction: column;
+  text-decoration: none;
+}
+
 .landing-brand h1 span {
   background: linear-gradient(90deg, #4dabf7, #69db7c);
   -webkit-background-clip: text;
@@ -156,6 +162,11 @@ select {
   gap: 18px;
 }
 
+.landing-kicker {
+  color: #909296;
+  font-size: 13px;
+}
+
 .landing-hero__copy h2,
 .landing-section__title h3,
 .landing-cta h3 {
@@ -253,6 +264,41 @@ select {
   gap: 16px;
 }
 
+.tutorial-page .landing-main {
+  gap: 24px;
+}
+
+.tutorial-hero {
+  padding-bottom: 20px;
+}
+
+.tutorial-grid {
+  grid-template-columns: 1fr;
+}
+
+.tutorial-card h3 {
+  color: #f1f3f5;
+  margin-bottom: 12px;
+  font-size: 28px;
+  line-height: 1.1;
+}
+
+.tutorial-points {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.tutorial-point {
+  background: #1f2023;
+  border: 1px solid #373a40;
+  border-radius: 10px;
+  padding: 12px 14px;
+  color: #c1c2c5;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
 @media (max-width: 980px) {
   .landing-feature-grid,
   .landing-workflow--three-up,
@@ -290,5 +336,68 @@ select {
 
   .landing-hero__copy h2 {
     font-size: 42px;
+  }
+}
+
+.app-shell {
+  width: 100%;
+}
+
+@media (max-width: 900px) {
+  .help-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .app-header {
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: 16px;
+  }
+
+  .app-header__stats {
+    width: 100%;
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
+
+  .app-nav__primary {
+    margin-left: 0 !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .app-shell {
+    padding: 16px !important;
+  }
+
+  .app-nav {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .app-nav button {
+    width: 100%;
+  }
+
+  .app-nav__primary {
+    grid-column: 1 / -1;
+  }
+
+  .app-footer__top,
+  .app-footer__bottom,
+  .app-footer__links {
+    flex-direction: column;
+    align-items: flex-start !important;
+  }
+
+  .app-footer__shortcuts {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px 12px;
+    width: 100%;
+  }
+
+  .help-grid {
+    grid-template-columns: 1fr !important;
   }
 }

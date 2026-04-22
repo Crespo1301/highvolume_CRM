@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useCRM } from '../context/CRMContext';
 import { colors, buttonBase, inputBase } from '../utils/theme.jsx';
-import { formatDate, formatDateTime, formatFollowUpDisplay, formatDateForInput, formatDateDisplay, isOverdue, isDueToday, followUpStatus, INDUSTRIES, SOURCES, parseDateInput, SORT_OPTIONS, SALE_TYPES } from '../utils/helpers';
+import { formatDate, formatDateTime, formatFollowUpDisplay, formatDateForInput, formatDateDisplay, isOverdue, isDueToday, followUpStatus, INDUSTRIES, SOURCES, parseDateInput, SORT_OPTIONS, SALE_TYPES, WEBSITE_STATUS_OPTIONS, OUTREACH_STATUS_OPTIONS } from '../utils/helpers';
 import { IconPlay, IconStop, IconChevronRight, IconPhone, IconCalendar, IconCheck, IconBan, IconSkull, IconFlag } from './Icons';
 
 // Card component
@@ -64,7 +64,7 @@ function Pill({ label }) {
 }
 
 export function Dashboard() {
-  const { todaysCalls, settings, progress, leads, hotLeads, followUps, analytics, tallyCall, setView, openModal, activeGolfCourse, todaysSales, weekSales, convertedLeads, quotaStats } = useCRM();
+  const { todaysCalls, settings, progress, leads, hotLeads, followUps, analytics, tallyCall, setView, openModal, activeGolfCourse, todaysSales, weekSales, convertedLeads, quotaStats, outreachReadyCount, recentAudits } = useCRM();
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
@@ -106,9 +106,16 @@ export function Dashboard() {
         <Stat label="Follow-ups" value={followUps.length} color={followUps.length > 0 ? colors.warning : colors.textMuted} />
       </Card>
 
+      <Card title=" Outreach Ready" color={colors.accent}>
+        <Stat label="Ready Now" value={outreachReadyCount} color={colors.accent} />
+        <Stat label="Emails Sent" value={analytics.emailsSent || 0} color={colors.primary} />
+        <Stat label="Audits" value={analytics.auditsGenerated || 0} color={colors.warning} />
+      </Card>
+
       <Card title=" Quick Actions" color={colors.primary}>
         <button onClick={() => tallyCall()} style={{ ...buttonBase, width: '100%', background: colors.success, color: '#fff', fontSize: 14, marginBottom: 10 }}> Tally Call (Space)</button>
         <button onClick={() => setView('addLead')} style={{ ...buttonBase, width: '100%', background: colors.bgLight, color: colors.warning, border: `1px solid ${colors.warning}`, marginBottom: 10 }}>+ New Lead</button>
+        <button onClick={() => setView('emails')} style={{ ...buttonBase, width: '100%', background: colors.bgLight, color: colors.primary, border: `1px solid ${colors.primary}`, marginBottom: 10 }}> Email Queue</button>
         <button onClick={() => openModal('recordSale', {})} style={{ ...buttonBase, width: '100%', background: colors.warning, color: '#000', fontWeight: '600' }}> Record Sale</button>
       </Card>
 
@@ -147,6 +154,17 @@ export function Dashboard() {
           {activeGolfCourse.phone && <div style={{ color: colors.textMuted, fontSize: 13 }}>{activeGolfCourse.phone}</div>}
         </Card>
       )}
+
+      {recentAudits.length > 0 && (
+        <Card title=" Recent Audits" color={colors.warning} borderColor={colors.warning}>
+          {recentAudits.map(audit => (
+            <div key={audit.id} style={{ padding: 12, background: colors.bgLight, borderRadius: 8, marginBottom: 8 }}>
+              <div style={{ fontWeight: '600', fontSize: 13 }}>{audit.leadName}</div>
+              <div style={{ color: colors.textMuted, fontSize: 11, marginTop: 4 }}>{audit.summary}</div>
+            </div>
+          ))}
+        </Card>
+      )}
     </div>
   );
 }
@@ -173,6 +191,8 @@ export function Analytics() {
           ['Best Day', analytics.maxDay.count, colors.danger],
           ['Sales', analytics.totalSaleCount, colors.accent],
           ['Revenue', `$${analytics.totalRevenue.toLocaleString()}`, colors.success],
+          ['Emails', analytics.emailsSent || 0, colors.primary],
+          ['Audits', analytics.auditsGenerated || 0, colors.warning],
         ].map(([label, val, color]) => (
           <div key={label} style={{ background: colors.bgCard, padding: 20, borderRadius: 12, textAlign: 'center', border: `1px solid ${colors.border}` }}>
             <div style={{ color, fontSize: 32, fontWeight: '700' }}>{val}</div>
@@ -205,6 +225,7 @@ const SortHeader = ({ type }) => {
   const OPTIONS = {
     // Leads-like
     leads: SORT_OPTIONS,
+    outreach: SORT_OPTIONS,
     followups: SORT_OPTIONS,
     dnc: SORT_OPTIONS,
     dead: SORT_OPTIONS,
@@ -266,7 +287,7 @@ const FilterHeader = ({ type }) => {
 
   const hasAny = Object.values(filters || {}).some(v => v && v !== 'all');
 
-  const showLeadFilters = ['leads', 'followups', 'dnc', 'dead', 'converted', 'trash'].includes(type);
+  const showLeadFilters = ['leads', 'outreach', 'followups', 'dnc', 'dead', 'converted', 'trash'].includes(type);
 
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
@@ -315,6 +336,16 @@ const FilterHeader = ({ type }) => {
             <option value="all">All Sources</option>
             {SOURCES.map(src => <option key={src} value={src}>{src}</option>)}
           </select>
+
+          <select
+            value={filters.websiteStatus || 'all'}
+            onChange={e => updateFilters({ websiteStatus: e.target.value })}
+            style={{ ...inputBase, width: 'auto', padding: '4px 8px', fontSize: 11, background: colors.bg }}
+            title="Filter by website status"
+          >
+            <option value="all">All Website Statuses</option>
+            {WEBSITE_STATUS_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+          </select>
         </>
       )}
 
@@ -360,6 +391,7 @@ export function ListView({ type }) {
 
   const titles = { 
     leads: 'Active Leads',
+    outreach: 'Outreach Queue',
     followups: 'Follow-ups',
     dnc: 'Do Not Call',
     dead: 'Dead Leads',
@@ -372,7 +404,8 @@ export function ListView({ type }) {
   };
   
   const hints = { 
-    leads: 'E = Email | ← DNC | → Dead | Space Call', 
+    leads: 'E = Email | ← DNC | → Dead | Space Call',
+    outreach: 'E = Email | Enter = Open lead | work your outreach queue',
     followups: 'E = Email | ← DNC | → Dead | Space Call',
     dnc: 'Enter to restore', 
     dead: 'Enter to restore',
@@ -528,7 +561,10 @@ export function ListView({ type }) {
               </div>
             ) : type === 'emails' ? (
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <div><div style={{ fontWeight: '600', fontSize: 14 }}>{item.leadName || item.to}</div></div>
+                <div>
+                  <div style={{ fontWeight: '600', fontSize: 14 }}>{item.leadName || item.to}</div>
+                  {item.subject && <div style={{ color: colors.textMuted, fontSize: 12 }}>{item.subject}</div>}
+                </div>
                 <div style={{ color: colors.textDim, fontSize: 11 }}>{formatDateTime(item.sentAt)}</div>
               </div>
             ) : type === 'converted' ? (
@@ -571,7 +607,17 @@ export function ListView({ type }) {
                     {item.priority === 'hot' && ' '}{item.businessName}
                     {item.industry && <span style={{ color: colors.textDim, fontSize: 11, marginLeft: 8 }}>({item.industry})</span>}
                   </div>
-                  <div style={{ color: colors.textMuted, fontSize: 12 }}>{item.contactName && `${item.contactName} • `}{item.phone}</div>
+                  <div style={{ color: colors.textMuted, fontSize: 12 }}>
+                    {item.contactName && `${item.contactName} • `}
+                    {item.phone}
+                    {item.city && `${item.contactName || item.phone ? ' • ' : ''}${item.city}${item.region ? `, ${item.region}` : ''}`}
+                  </div>
+                  {type === 'outreach' && (
+                    <div style={{ color: colors.textDim, fontSize: 11, marginTop: 4 }}>
+                      {OUTREACH_STATUS_OPTIONS.find(option => option.value === item.outreachStatus)?.label || 'New'}
+                      {item.latestAuditSummary ? ` • ${item.latestAuditSummary}` : ''}
+                    </div>
+                  )}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   {item.email && (
@@ -579,6 +625,11 @@ export function ListView({ type }) {
                   )}
                   <div style={{ textAlign: 'right' }}>
                     {['leads', 'followups'].includes(type) && <div style={{ color: colors.success, fontSize: 13, fontWeight: '600' }}>{item.callCount || 0} calls</div>}
+                    {typeof item.googleRating === 'number' && (
+                      <div style={{ color: colors.textMuted, fontSize: 11 }}>
+                        {item.googleRating.toFixed(1)} stars{item.googleReviewCount ? ` • ${item.googleReviewCount} reviews` : ''}
+                      </div>
+                    )}
                     {item.followUp && <div style={{ color: followUpStatus(item.followUp) === 'overdue' ? colors.danger : followUpStatus(item.followUp) === 'due' ? colors.warning : colors.textDim, fontSize: 11 }}> {formatFollowUpDisplay(item.followUp)}</div>}
                   </div>
                 </div>
@@ -647,7 +698,10 @@ export function AddLeadForm() {
     phone: '', 
     email: '', 
     address: '', 
+    city: '',
+    region: '',
     website: '', 
+    websiteStatus: 'unknown',
     industry: 'Restaurant',
     notes: '', 
     priority: 'normal', 
@@ -669,6 +723,8 @@ export function AddLeadForm() {
           ['email', 'Email', 1], 
           ['website', 'Website', 1], 
           ['address', 'Address', 2],
+          ['city', 'City', 1],
+          ['region', 'State / Region', 1],
         ].map(([key, label, span]) => (
           <div key={key} style={{ gridColumn: `span ${span}` }}>
             <label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>{label}</label>
@@ -687,6 +743,13 @@ export function AddLeadForm() {
           <label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>Source</label>
           <select value={form.source} onChange={e => setForm(f => ({ ...f, source: e.target.value }))} style={inputBase}>
             {SOURCES.map(src => <option key={src} value={src}>{src}</option>)}
+          </select>
+        </div>
+
+        <div>
+          <label style={{ display: 'block', color: colors.textMuted, marginBottom: 4, fontSize: 12 }}>Website Status</label>
+          <select value={form.websiteStatus} onChange={e => setForm(f => ({ ...f, websiteStatus: e.target.value }))} style={inputBase}>
+            {WEBSITE_STATUS_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
           </select>
         </div>
         

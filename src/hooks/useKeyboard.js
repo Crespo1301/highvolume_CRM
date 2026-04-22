@@ -28,6 +28,7 @@ export function useKeyboard() {
         '9': 'dead', 
         'f': 'followups', 
         'c': 'calllog', 
+        'o': 'outreach',
         'g': 'golfcourses', 
         't': 'trash', 
         'a': 'analytics', 

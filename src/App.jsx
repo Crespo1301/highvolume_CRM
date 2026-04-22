@@ -1,12 +1,14 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import ColdCallCRM from './ColdCallCRM'
 import LandingPage from './LandingPage'
+import TutorialPage from './TutorialPage'
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<LandingPage />} />
+        <Route path="/tutorial" element={<TutorialPage />} />
         <Route path="/app" element={<ColdCallCRM />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

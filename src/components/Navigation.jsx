@@ -1,10 +1,10 @@
 import React from 'react';
 import { useCRM } from '../context/CRMContext';
 import { colors, buttonBase } from '../utils/theme.jsx';
-import { IconTarget, IconCalendar, IconCheck, IconBan, IconSkull, IconPhone, IconGolf } from './Icons';
+import { IconTarget, IconCalendar, IconCheck, IconBan, IconSkull, IconPhone, IconGolf, IconMail } from './Icons';
 
 export function Navigation() {
-  const { view, setView, setSelectedIndex, leads, dncList, deadLeads, convertedLeads, callLog, golfCourses, trash, emails, followUps, overdueCount, sales } = useCRM();
+  const { view, setView, setSelectedIndex, leads, dncList, deadLeads, convertedLeads, callLog, golfCourses, trash, emails, followUps, overdueCount, sales, outreachReadyCount } = useCRM();
 
   
   const tabs = [
@@ -15,6 +15,7 @@ export function Navigation() {
     { key: 'dnc', label: 'DNC', shortcut: '7', count: dncList.length, icon: <IconBan size={16} /> },
     { key: 'dead', label: 'Dead', shortcut: '9', count: deadLeads.length, icon: <IconSkull size={16} /> },
     { key: 'calllog', label: 'Calls', shortcut: 'C', count: callLog.length, icon: <IconPhone size={16} /> },
+    { key: 'outreach', label: 'Outreach', shortcut: 'O', count: outreachReadyCount, icon: <IconMail size={16} /> },
     { key: 'sales', label: 'Sales', shortcut: '$', count: sales.length },
     { key: 'golfcourses', label: 'Markets', shortcut: 'G', count: golfCourses.length, icon: <IconGolf size={16} /> },
     { key: 'trash', label: 'Trash', shortcut: 'T', count: trash.length },
@@ -24,7 +25,7 @@ export function Navigation() {
 
 
   return (
-    <nav style={{ display: 'flex', gap: 6, marginBottom: 20, flexWrap: 'wrap' }}>
+    <nav className="app-nav" style={{ display: 'flex', gap: 6, marginBottom: 20, flexWrap: 'wrap' }}>
       {tabs.map(t => (
         <button
           key={t.key}
@@ -45,7 +46,7 @@ export function Navigation() {
           </span>
         </button>
       ))}
-      <button onClick={() => setView('addLead')} style={{ ...buttonBase, padding: '8px 14px', background: colors.warning, color: '#000', fontSize: 12, marginLeft: 'auto' }}>
+      <button className="app-nav__primary" onClick={() => setView('addLead')} style={{ ...buttonBase, padding: '8px 14px', background: colors.warning, color: '#000', fontSize: 12, marginLeft: 'auto' }}>
         + Add Lead
       </button>
     </nav>

@@ -56,7 +56,7 @@ function CRMApp() {
       <AllModals />
 
       {/* Main Layout */}
-      <div style={{ maxWidth: 1400, margin: '0 auto', padding: '20px 24px' }}>
+      <div className="app-shell" style={{ maxWidth: 1400, margin: '0 auto', padding: '20px 24px' }}>
         <Header />
         <Navigation />
 
@@ -69,6 +69,7 @@ function CRMApp() {
           {view === 'dnc' && <ListView type="dnc" />}
           {view === 'dead' && <ListView type="dead" />}
           {view === 'calllog' && <ListView type="calllog" />}
+          {view === 'outreach' && <ListView type="outreach" />}
           {view === 'sales' && <SalesView />}
           {view === 'trash' && <ListView type="trash" />}
           {view === 'emails' && <ListView type="emails" />}

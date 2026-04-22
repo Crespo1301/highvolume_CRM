@@ -52,12 +52,12 @@ export default function LandingPage() {
   return (
     <div className="landing-page">
       <header className="landing-nav">
-        <div className="landing-brand">
+        <Link to="/" className="landing-brand">
           <h1>
             <span>HighVolume CRM</span>
           </h1>
           <p>Keyboard-first CRM for high-volume outreach</p>
-        </div>
+        </Link>
 
         <div className="landing-nav__actions">
           <a href="#features" className="landing-link">
@@ -66,6 +66,9 @@ export default function LandingPage() {
           <a href="#workflow" className="landing-link">
             Workflow
           </a>
+          <Link to="/tutorial" className="landing-link">
+            Tutorial
+          </Link>
           <Link to="/app" className="landing-button landing-button--ghost">
             Open CRM
           </Link>
@@ -75,20 +78,21 @@ export default function LandingPage() {
       <main className="landing-main">
         <section className="landing-hero landing-panel">
           <div className="landing-hero__copy">
+            <span className="landing-kicker">All-in-one outreach workspace</span>
             <span className="landing-eyebrow">Built for real daily volume</span>
-            <h2>The simple CRM for people who need to contact more leads and stay consistent.</h2>
+            <h2>Track leads, follow-ups, and sales activity from one fast CRM.</h2>
             <p>
-              HighVolume CRM helps outreach-focused operators keep leads, follow ups, calls, and sales in
-              one clean workspace. It is built for execution, not bloated setup.
+              HighVolume CRM helps outreach-focused operators organize prospects, log communication,
+              manage follow ups, and stay on top of daily performance without bloated setup.
             </p>
 
             <div className="landing-hero__actions">
               <Link to="/app" className="landing-button landing-button--primary">
                 Enter the App
               </Link>
-              <a href="#features" className="landing-button landing-button--secondary">
-                See Features
-              </a>
+              <Link to="/tutorial" className="landing-button landing-button--secondary">
+                Full Tutorial
+              </Link>
             </div>
           </div>
 
@@ -150,9 +154,14 @@ export default function LandingPage() {
             <span className="landing-eyebrow">Ready to start</span>
             <h3>Open the CRM and start working your leads.</h3>
           </div>
-          <Link to="/app" className="landing-button landing-button--primary">
-            Open HighVolume CRM
-          </Link>
+          <div className="landing-hero__actions">
+            <Link to="/tutorial" className="landing-button landing-button--secondary">
+              Read the Tutorial
+            </Link>
+            <Link to="/app" className="landing-button landing-button--primary">
+              Open HighVolume CRM
+            </Link>
+          </div>
         </section>
       </main>
     </div>

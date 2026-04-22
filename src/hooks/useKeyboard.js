@@ -6,7 +6,7 @@ export function useKeyboard() {
     view, setView, selectedIndex, setSelectedIndex, setSearchQuery,
     modals, openModal, closeAllModals,
     getCurrentList, tallyCall, moveToDNC, moveToDead, restoreFromDNC, restoreFromDead,
-    restoreFromTrash, unconvertLead, deleteToTrash, deleteCall, quickLogEmail, setEmails, notify
+    restoreFromTrash, unconvertLead, deleteToTrash, deleteCall, openEmailComposer, setEmails, notify
   } = useCRM();
 
   useEffect(() => {
@@ -86,9 +86,9 @@ export function useKeyboard() {
           break;
         case 'e':
           e.preventDefault();
-          // Quick email for selected lead
-          if (['leads', 'followups'].includes(view) && list[selectedIndex] && list[selectedIndex].email) {
-            quickLogEmail(list[selectedIndex]);
+          // Open draft composer for selected lead
+          if (['leads', 'followups', 'outreach'].includes(view) && list[selectedIndex] && list[selectedIndex].email) {
+            openEmailComposer(list[selectedIndex]);
           }
           break;
         case 'enter':
@@ -123,7 +123,7 @@ export function useKeyboard() {
     };
     window.addEventListener('keydown', handle);
     return () => window.removeEventListener('keydown', handle);
-  }, [view, selectedIndex, getCurrentList, modals.help]);
+  }, [view, selectedIndex, getCurrentList, modals.help, openEmailComposer]);
 
   // Clear search
   const { searchQuery } = useCRM();

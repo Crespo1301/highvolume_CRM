@@ -431,12 +431,12 @@ export function ListView({ type }) {
 
   return (
     <div style={{ background: colors.bgCard, borderRadius: 12, border: `1px solid ${colors.border}`, overflow: 'hidden' }}>
-      <div style={{ padding: '14px 20px', background: colors.bgLight, borderBottom: `1px solid ${colors.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+      <div className="app-list-header" style={{ padding: '14px 20px', background: colors.bgLight, borderBottom: `1px solid ${colors.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
         <h2 style={{ fontSize: 15, color: colors.text, fontWeight: '600' }}>{titles[type]}</h2>
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+        <div className="app-list-toolbar" style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
           <SortHeader type={type} />
           <FilterHeader type={type} />
-          {hints[type] && <span style={{ color: colors.textDim, fontSize: 11 }}>{hints[type]}</span>}
+          {hints[type] && <span className="app-list-hint" style={{ color: colors.textDim, fontSize: 11 }}>{hints[type]}</span>}
           <span style={{ color: colors.textDim, fontSize: 12 }}>{list.length} entries</span>
           {type === 'trash' && trash.length > 0 && (
             <button onClick={emptyTrash} style={{ ...buttonBase, padding: '6px 12px', background: colors.danger, color: '#fff', fontSize: 11 }}>Empty Trash</button>
@@ -539,10 +539,11 @@ export function ListView({ type }) {
         </div>
       )}
       </div>
-      <div style={{ maxHeight: 500, overflowY: 'auto' }}>
+      <div className="app-list-scroll" style={{ maxHeight: 500, overflowY: 'auto' }}>
         {list.map((item, idx) => (
           <div 
             key={item.id + (item.type || '')} 
+            className="app-list-row"
             onClick={() => {
               setSelectedIndex(idx);
               if (type === 'calllog') openModal('editCall', item);

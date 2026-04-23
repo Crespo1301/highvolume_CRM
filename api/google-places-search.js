@@ -21,6 +21,45 @@ const DETAIL_FIELDS = [
   'businessStatus',
 ].join(',');
 
+const CHAIN_KEYWORDS = [
+  'walmart', 'target', 'costco', 'home depot', 'lowes', 'starbucks', 'mcdonald', 'burger king',
+  'taco bell', 'subway', 'dominos', 'pizza hut', 'kfc', 'chipotle', 'panera', 'dunkin',
+  'whole foods', 'trader joe', 'walgreens', 'cvs', 'rite aid', 'bank of america', 'chase',
+  'wells fargo', 'us bank', 'marriott', 'hilton', 'hyatt', 'ihop', 'applebees', 'olive garden'
+];
+
+function computeProspectFit(place = {}) {
+  const name = String(place.businessName || '').toLowerCase();
+  const reviewCount = Number(place.userRatingCount) || 0;
+  const rating = typeof place.rating === 'number' ? place.rating : 0;
+  const hasWebsite = Boolean(place.website);
+  const hasPhone = Boolean(place.phone);
+  const isOperational = !place.businessStatus || place.businessStatus === 'OPERATIONAL';
+  const chainPenalty = CHAIN_KEYWORDS.some(keyword => name.includes(keyword));
+
+  let score = 0;
+
+  if (isOperational) score += 2;
+  if (hasPhone) score += 1;
+  if (hasWebsite) score += 2;
+
+  if (reviewCount >= 10 && reviewCount <= 200) score += 7;
+  else if (reviewCount >= 5 && reviewCount < 10) score += 3;
+  else if (reviewCount > 200 && reviewCount <= 350) score += 2;
+  else if (reviewCount > 350 && reviewCount <= 600) score -= 3;
+  else if (reviewCount > 600) score -= 7;
+
+  if (rating >= 3.6 && rating <= 4.8) score += 2;
+  else if (rating > 4.9) score -= 1;
+  else if (rating > 0 && rating < 3.4) score -= 1;
+
+  if (!hasWebsite && reviewCount >= 15) score += 2;
+  if (!hasWebsite && reviewCount < 5) score -= 2;
+  if (chainPenalty) score -= 10;
+
+  return score;
+}
+
 async function requestJson(url, options) {
   const response = await fetch(url, options);
   const payload = await response.json().catch(() => ({}));
@@ -62,6 +101,7 @@ export default async function handler(req, res) {
   }
 
   try {
+    const requestedCount = Math.max(1, Math.min(Number(maxResults) || 10, 20));
     const searchPayload = await requestJson('https://places.googleapis.com/v1/places:searchText', {
       method: 'POST',
       headers: {
@@ -71,7 +111,7 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         textQuery: query,
-        maxResultCount: Math.max(1, Math.min(Number(maxResults) || 10, 20)),
+        maxResultCount: Math.min(Math.max(requestedCount * 2, 12), 20),
         languageCode: 'en',
         regionCode: 'US',
       }),
@@ -114,9 +154,21 @@ export default async function handler(req, res) {
       })
     );
 
+    const rankedPlaces = detailResults
+      .filter(place => place.businessName)
+      .map(place => ({
+        ...place,
+        prospectFitScore: computeProspectFit(place),
+      }))
+      .sort((a, b) => {
+        if (b.prospectFitScore !== a.prospectFitScore) return b.prospectFitScore - a.prospectFitScore;
+        return (a.userRatingCount || 0) - (b.userRatingCount || 0);
+      })
+      .slice(0, requestedCount);
+
     return res.status(200).json({
       query,
-      leads: detailResults.filter(place => place.businessName),
+      leads: rankedPlaces,
     });
   } catch (error) {
     return res.status(500).json({ error: error.message || 'Unable to search Google Places.' });

@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useCRM } from '../context/CRMContext';
 import { colors, buttonBase, inputBase } from '../utils/theme.jsx';
-import { formatDate, formatFollowUpDisplay, formatDateTime, formatDateForInput, formatDateDisplay, isOverdue, generateId, INDUSTRIES, SOURCES, parseDateInput, SALE_TYPES, MARKET_PRESETS, WEBSITE_STATUS_OPTIONS, OUTREACH_STATUS_OPTIONS, scoreLead, classifyPriorityFromScore, EMAIL_SEQUENCE_STEPS, generateEmailDraft, getEmailSequenceStep } from '../utils/helpers';
+import { formatDate, formatFollowUpDisplay, formatDateTime, formatDateForInput, formatDateDisplay, isOverdue, generateId, INDUSTRIES, SOURCES, parseDateInput, SALE_TYPES, MARKET_PRESETS, WEBSITE_STATUS_OPTIONS, OUTREACH_STATUS_OPTIONS, scoreLead, classifyPriorityFromScore, EMAIL_SEQUENCE_STEPS, generateEmailDraft, getEmailSequenceStep, formatTimestampForFilename } from '../utils/helpers';
 import { IconX } from './Icons';
 import { EnhancedHelpModal } from './HelpPanel';
 
@@ -470,9 +470,10 @@ export function ExportModal() {
   const { modals, closeModal, leads, dncList, deadLeads, convertedLeads, callLog, golfCourses, sales, dailyStats, settings, notify } = useCRM();
   if (!modals.export) return null;
   const exportData = (type) => {
+    const timestamp = formatTimestampForFilename();
     if (type === 'all') {
       const blob = new Blob([JSON.stringify({ leads, dncList, deadLeads, convertedLeads, callLog, dailyStats, golfCourses, sales, settings, exportedAt: new Date().toISOString() }, null, 2)], { type: 'application/json' });
-      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'crm_backup.json'; a.click();
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `highvolume_crm_backup_${timestamp}.json`; a.click();
       notify('📦 Backup exported!'); closeModal('export'); return;
     }
     const exports = {
@@ -495,9 +496,9 @@ export function ExportModal() {
           golfCourses.find(gc => gc.id === l.golfCourseId)?.name || '',
           l.notes
         ]),
-        f: 'leads.csv'
+        f: `highvolume_crm_leads_${timestamp}.csv`
       },
-      sales: { h: ['Lead', 'Date', 'Type', 'Amount'], d: sales.map(s => [s.leadName, formatDate(s.saleDate), s.saleType, s.amount]), f: 'sales.csv' },
+      sales: { h: ['Lead', 'Date', 'Type', 'Amount'], d: sales.map(s => [s.leadName, formatDate(s.saleDate), s.saleType, s.amount]), f: `highvolume_crm_sales_${timestamp}.csv` },
     };
     const exp = exports[type]; if (!exp) return;
     const csv = [exp.h, ...exp.d].map(row => row.map(c => `"${String(c || '').replace(/"/g, '""')}"`).join(',')).join('\n');
